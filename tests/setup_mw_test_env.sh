@@ -164,6 +164,21 @@ docker compose exec -T mediawiki bash -lc "
 echo "==> Running MW updater for PageForms..."
 docker compose exec -T mediawiki php maintenance/update.php --quick
 
+# ---------------- ENABLE PARSER FUNCTIONS ----------------
+
+echo "==> Enabling ParserFunctions..."
+docker compose exec -T mediawiki bash -lc "
+  sed -i '/ParserFunctions/d' $CONTAINER_WIKI/LocalSettings.php
+  {
+    echo ''
+    echo '// === ParserFunctions ==='
+    echo 'wfLoadExtension( \"ParserFunctions\" );'
+  } >> $CONTAINER_WIKI/LocalSettings.php
+"
+
+echo "==> Running MW updater for ParserFunctions..."
+docker compose exec -T mediawiki php maintenance/update.php --quick
+
 # ---------------- STRUCTURESYNCH ----------------
 
 echo "==> Verifying StructureSync extension directory..."

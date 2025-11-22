@@ -131,26 +131,24 @@ class TemplateGenerator {
         /* ------------------------------------------------------------------
          * SEMANTIC TEMPLATE INCLUDE
          * ------------------------------------------------------------------ */
-        $line = '{{' . $name . '/semantic';
+        $lines[] = '{{' . $name . '/semantic';
         foreach ( $properties as $property ) {
             $param = $this->sanitize( $this->propertyToParameter( $property ) );
             $propertySafe = $this->sanitize( $property );
-            $line .= ' | ' . $propertySafe . ' = {{{' . $param . '|}}}';
+            $lines[] = ' | ' . $propertySafe . ' = {{{' . $param . '|}}}';
         }
-        $line .= '}}';
-        $lines[] = $line;
+        $lines[] = '}}';
         $lines[] = '';
 
         /* ------------------------------------------------------------------
          * DISPLAY TEMPLATE INCLUDE
          * ------------------------------------------------------------------ */
-        $line = '{{' . $name . '/display';
+        $lines[] = '{{' . $name . '/display';
         foreach ( $properties as $property ) {
             $param = $this->sanitize( $this->propertyToParameter( $property ) );
-            $line .= ' | ' . $param . ' = {{{' . $param . '|}}}';
+            $lines[] = ' | ' . $param . ' = {{{' . $param . '|}}}';
         }
-        $line .= '}}';
-        $lines[] = $line;
+        $lines[] = '}}';
 
         $lines[] = '</includeonly>';
 

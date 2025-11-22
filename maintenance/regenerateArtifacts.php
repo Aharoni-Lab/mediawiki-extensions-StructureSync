@@ -7,6 +7,7 @@ use MediaWiki\Extension\StructureSync\Store\WikiCategoryStore;
 use MediaWiki\Extension\StructureSync\Generator\TemplateGenerator;
 use MediaWiki\Extension\StructureSync\Generator\FormGenerator;
 use MediaWiki\Extension\StructureSync\Generator\DisplayStubGenerator;
+use MediaWiki\Extension\StructureSync\Schema\InheritanceResolver;
 
 $IP = getenv( 'MW_INSTALL_PATH' );
 if ( $IP === false ) {
@@ -23,7 +24,7 @@ class RegenerateArtifacts extends Maintenance {
 		parent::__construct();
 		$this->addDescription( 'Regenerate templates and forms for categories' );
 		$this->addOption( 'category', 'Regenerate artifacts for a specific category', false, true );
-		$this->addOption( 'generate-display', 'Generate display stubs for missing templates', false, false );
+		$this->addOption( 'generate-display', 'Generate or update display templates (includes parent displays)', false, false );
 		$this->requireExtension( 'StructureSync' );
 	}
 
@@ -74,8 +75,19 @@ class RegenerateArtifacts extends Maintenance {
 		$name = $category->getName();
 		$this->output( "Processing: $name\n" );
 
+		// Get effective category and ancestor chain
+		$categoryStore = new WikiCategoryStore();
+		$allCategories = $categoryStore->getAllCategories();
+		$categoryMap = [];
+		foreach ( $allCategories as $cat ) {
+			$categoryMap[ $cat->getName() ] = $cat;
+		}
+		$resolver = new InheritanceResolver( $categoryMap );
+		$effective = $resolver->getEffectiveCategory( $name );
+		$ancestors = $resolver->getAncestors( $name );
+
 		// Generate semantic template
-		$result = $templateGenerator->generateAllTemplates( $category );
+		$result = $templateGenerator->generateAllTemplates( $effective );
 		if ( $result['success'] ) {
 			$this->output( "  ✓ Generated semantic and dispatcher templates\n" );
 		} else {
@@ -86,19 +98,21 @@ class RegenerateArtifacts extends Maintenance {
 		}
 
 		// Generate form
-		if ( $formGenerator->generateAndSaveForm( $category ) ) {
+		if ( $formGenerator->generateAndSaveForm( $effective, $ancestors ) ) {
 			$this->output( "  ✓ Generated form\n" );
 		} else {
 			$this->output( "  ✗ Form generation failed\n" );
 		}
 
-		// Generate display stub if requested and missing
+		// Generate or update display template if requested
 		if ( $generateDisplay ) {
-			$displayResult = $displayGenerator->generateDisplayStubIfMissing( $category );
-			if ( $displayResult['created'] ) {
+			$displayResult = $displayGenerator->generateOrUpdateDisplayStub( $effective );
+			if ( !empty( $displayResult['error'] ) ) {
+				$this->output( "  ✗ Display template failed: {$displayResult['error']}\n" );
+			} elseif ( $displayResult['created'] ) {
 				$this->output( "  ✓ Generated display template stub\n" );
-			} else {
-				$this->output( "  - Display template: {$displayResult['message']}\n" );
+			} elseif ( $displayResult['updated'] ) {
+				$this->output( "  ✓ Updated display template\n" );
 			}
 		}
 

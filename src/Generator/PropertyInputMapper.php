@@ -122,11 +122,6 @@ class PropertyInputMapper {
             // No additional params needed; PF checkbox is simple
         }
 
-        /* ------------------------------------------------------------------
-         * DEFAULT: PF mandatory will be set in generateInputDefinition()
-         * ------------------------------------------------------------------ */
-        $params['mandatory'] = 'false';
-
         return $params;
     }
 
@@ -146,8 +141,11 @@ class PropertyInputMapper {
         $inputType = $this->getInputType( $property );
         $params = $this->getInputParameters( $property );
 
-        // Override mandatory flag
-        $params['mandatory'] = $isMandatory ? 'true' : 'false';
+        // Only set mandatory parameter if field is required
+        // For optional fields, omit the parameter entirely
+        if ( $isMandatory ) {
+            $params['mandatory'] = 'true';
+        }
 
         // Build "key=value" segments
         $paramText = '';

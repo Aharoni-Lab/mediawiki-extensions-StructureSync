@@ -838,7 +838,7 @@ class SpecialStructureSync extends SpecialPage {
 
 				$templateGenerator->generateAllTemplates( $effective );
 				$formGenerator->generateAndSaveForm( $effective, $ancestors );
-				$displayGenerator->generateDisplayStubIfMissing( $effective );
+				$displayGenerator->generateOrUpdateDisplayStub( $effective );
 			}
 
 			// Compute and store hashes for all generated pages

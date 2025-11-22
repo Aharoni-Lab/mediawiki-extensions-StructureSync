@@ -70,7 +70,7 @@ class DisplayStubGenerator {
         $lines[] = '<!-- This template is SAFE TO EDIT and will NOT be overwritten. -->';
         $lines[] = '<!-- Customize the visual layout for pages in [[Category:' . $this->sanitize( $category->getName() ) . ']]. -->';
         $lines[] = '<!-- You may reorganize sections, add wikitables, images, etc. -->';
-        $lines[] = '</noinclude><includeonly>';
+        $lines[] = '</noinclude>';
 
         /* ------------------------------------------------------------------
          * HEADER SECTION (if configured)
@@ -105,8 +105,6 @@ class DisplayStubGenerator {
              * -------------------------------------------------------------- */
             $lines = array_merge( $lines, $this->generateDefaultDisplaySection( $category ) );
         }
-
-        $lines[] = '</includeonly>';
 
         return implode( "\n", $lines );
     }
@@ -163,8 +161,9 @@ class DisplayStubGenerator {
         $properties = $category->getAllProperties();
         sort( $properties );
 
+        $categoryLabel = $this->sanitize( $category->getLabel() );
         $lines = [];
-        $lines[] = '== Details ==';
+        $lines[] = '== ' . $categoryLabel . ' Details ==';
         $lines[] = '<div class="ss-section">';
 
         foreach ( $properties as $propertyName ) {
@@ -239,6 +238,53 @@ class DisplayStubGenerator {
         return [
             'created' => true,
             'message' => 'Display template stub created.'
+        ];
+    }
+
+    /**
+     * Create or update the display template stub.
+     * This will overwrite existing templates.
+     *
+     * @param CategoryModel $category
+     * @return array{created:bool,updated:bool,message?:string,error?:string}
+     */
+    public function generateOrUpdateDisplayStub( CategoryModel $category ): array {
+
+        $name = $category->getName();
+        $existed = $this->displayStubExists( $name );
+
+        $content = $this->generateDisplayStub( $category );
+
+        $title = $this->pageCreator->makeTitle(
+            $name . '/display',
+            NS_TEMPLATE
+        );
+
+        if ( !$title ) {
+            return [
+                'created' => false,
+                'updated' => false,
+                'error' => 'Failed to create Title object.'
+            ];
+        }
+
+        $summary = $existed
+            ? 'StructureSync: Updated display template'
+            : 'StructureSync: Initial display template stub (safe to edit)';
+        $success = $this->pageCreator->createOrUpdatePage( $title, $content, $summary );
+
+        if ( !$success ) {
+            return [
+                'created' => false,
+                'updated' => false,
+                'error' => 'Failed to write display template.'
+            ];
+        }
+
+        return [
+            'created' => !$existed,
+            'updated' => $existed,
+            'message' => $existed ? 'Display template updated.' : 'Display template stub created.'
         ];
     }
 

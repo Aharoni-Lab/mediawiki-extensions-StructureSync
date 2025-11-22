@@ -509,11 +509,14 @@ class SchemaImporter {
 				}
 
 				// Display
-				$displayRes = $this->displayGenerator->generateDisplayStubIfMissing( $effective );
+				$displayRes = $this->displayGenerator->generateOrUpdateDisplayStub( $effective );
 				if ( !empty( $displayRes['error'] ) ) {
 					$result['errors'][] = "Display generation for '$name': " . $displayRes['error'];
-				} elseif ( !empty( $displayRes['created'] ) ) {
+				} else {
 					if ( $displayRes['created'] ) {
+						$result['displayCreated']++;
+					} elseif ( $displayRes['updated'] ) {
+						// Track updates separately if needed, or just count as created for now
 						$result['displayCreated']++;
 					}
 				}
