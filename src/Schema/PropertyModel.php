@@ -93,10 +93,13 @@ class PropertyModel
             ? trim($data['subpropertyOf'])
             : null;
 
-        // Display type: check new display block first, then legacy annotation
+        // Display type: check new display block first, then schema field
         if (isset($data['display']['type'])) {
             $this->displayType = trim($data['display']['type']);
+        } elseif (isset($data['displayBuiltin'])) {
+            $this->displayType = trim($data['displayBuiltin']);
         } elseif (isset($data['displayType'])) {
+            // Legacy fallback for old schemas
             $this->displayType = trim($data['displayType']);
         } else {
             $this->displayType = null;
@@ -108,9 +111,14 @@ class PropertyModel
             : null;
 
         // Display pattern: property-to-property template reference
-        $this->displayPattern = isset($data['displayPattern'])
-            ? trim($data['displayPattern'])
-            : null;
+        if (isset($data['displayFromProperty'])) {
+            $this->displayPattern = trim($data['displayFromProperty']);
+        } elseif (isset($data['displayPattern'])) {
+            // Legacy fallback for old schemas
+            $this->displayPattern = trim($data['displayPattern']);
+        } else {
+            $this->displayPattern = null;
+        }
     }
 
     /* ---------------------------------------------------------------------
@@ -307,7 +315,17 @@ class PropertyModel
         }
 
         if ($this->displayType !== null) {
-            $data['displayType'] = $this->displayType;
+            $data['displayBuiltin'] = $this->displayType;
+        }
+
+        // Include displayTemplate if present
+        if ($this->displayTemplate !== null) {
+            $data['displayTemplate'] = $this->displayTemplate;
+        }
+
+        // Include displayFromProperty if present (property reference for template)
+        if ($this->displayPattern !== null) {
+            $data['displayFromProperty'] = $this->displayPattern;
         }
 
         return $data;

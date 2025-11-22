@@ -16,8 +16,8 @@ class WikiCategoryStore
     private $pageCreator;
 
     /** Schema content markers */
-    private const MARKER_START = '<!-- StructureSync Schema Start -->';
-    private const MARKER_END = '<!-- StructureSync Schema End -->';
+    private const MARKER_START = '<!-- StructureSync Start -->';
+    private const MARKER_END = '<!-- StructureSync End -->';
 
     public function __construct(PageCreator $pageCreator = null)
     {
@@ -145,23 +145,30 @@ class WikiCategoryStore
     }
 
     /**
-     * Extract description from content
+     * Extract description from content within StructureSync markers.
+     * Looks for a line starting with "Description:"
      */
     private function extractDescription(string $content): string
     {
-        $lines = explode("\n", $content);
+        // Extract content within StructureSync markers
+        $startPos = strpos($content, self::MARKER_START);
+        $endPos = strpos($content, self::MARKER_END);
+        
+        if ($startPos === false || $endPos === false || $endPos <= $startPos) {
+            return '';
+        }
+        
+        $markerContent = substr($content, $startPos + strlen(self::MARKER_START), $endPos - $startPos - strlen(self::MARKER_START));
+        
+        // Look for "Description:" line
+        $lines = explode("\n", $markerContent);
         foreach ($lines as $line) {
             $line = trim($line);
-            if (
-                $line !== '' &&
-                !str_starts_with($line, '[[') &&
-                !str_starts_with($line, '{{') &&
-                !str_starts_with($line, '<!--') &&
-                !str_starts_with($line, '=')
-            ) {
-                return $line;
+            if (preg_match('/^Description:\s*(.+)$/i', $line, $matches)) {
+                return trim($matches[1]);
             }
         }
+        
         return '';
     }
 
@@ -213,7 +220,7 @@ class WikiCategoryStore
 
         // Description (optional)
         if ($category->getDescription() !== '') {
-            $lines[] = $category->getDescription();
+            $lines[] = 'Description: ' . $category->getDescription();
             $lines[] = '';
         }
 

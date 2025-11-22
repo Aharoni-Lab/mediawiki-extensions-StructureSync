@@ -21,8 +21,8 @@ use MediaWiki\Title\Title;
 class WikiPropertyStore
 {
 
-    private const MARKER_START = '<!-- StructureSync Schema Start -->';
-    private const MARKER_END = '<!-- StructureSync Schema End -->';
+    private const MARKER_START = '<!-- StructureSync Start -->';
+    private const MARKER_END = '<!-- StructureSync End -->';
 
     /** @var PageCreator */
     private $pageCreator;
@@ -129,19 +129,20 @@ class WikiPropertyStore
         }
 
         /* Description --------------------------------------------------- */
-        $lines = explode("\n", $content);
-        foreach ($lines as $line) {
-            $line = trim($line);
-
-            if (
-                $line !== '' &&
-                !str_starts_with($line, '[[') &&
-                !str_starts_with($line, '{{') &&
-                !str_starts_with($line, '<!') &&
-                !str_starts_with($line, '=')       // fix: ignore headings
-            ) {
-                $data['description'] = $line;
-                break;
+        // Extract from within StructureSync markers, must start with "Description:"
+        $startPos = strpos($content, self::MARKER_START);
+        $endPos = strpos($content, self::MARKER_END);
+        
+        if ($startPos !== false && $endPos !== false && $endPos > $startPos) {
+            $markerContent = substr($content, $startPos + strlen(self::MARKER_START), $endPos - $startPos - strlen(self::MARKER_START));
+            
+            $lines = explode("\n", $markerContent);
+            foreach ($lines as $line) {
+                $line = trim($line);
+                if (preg_match('/^Description:\s*(.+)$/i', $line, $matches)) {
+                    $data['description'] = trim($matches[1]);
+                    break;
+                }
             }
         }
 
@@ -155,7 +156,7 @@ class WikiPropertyStore
     }
 
     /**
-     * Parse the <!-- StructureSync Display Start/End --> block
+     * Parse the Display block within StructureSync markers
      * 
      * Returns array with:
      *   'template' => wikitext template string (or null)
@@ -163,20 +164,11 @@ class WikiPropertyStore
      */
     private function parseDisplayBlock(string $content): array
     {
-        $start = '<!-- StructureSync Display Start -->';
-        $end = '<!-- StructureSync Display End -->';
-
-        // Find markers
-        $startPos = strpos($content, $start);
-        $endPos = strpos($content, $end);
-
-        if ($startPos === false || $endPos === false || $endPos <= $startPos) {
+        $blockContent = $this->extractDisplaySection($content, self::MARKER_START, self::MARKER_END);
+        
+        if ($blockContent === '') {
             return [];
         }
-
-        // Extract block content
-        $blockStart = $startPos + strlen($start);
-        $blockContent = substr($content, $blockStart, $endPos - $blockStart);
 
         $result = [];
 
@@ -215,6 +207,27 @@ class WikiPropertyStore
         }
 
         return $result;
+    }
+
+    /**
+     * Extract content between markers for display parsing
+     *
+     * @param string $content Full page content
+     * @param string $startMarker Start marker
+     * @param string $endMarker End marker
+     * @return string Content between markers, or empty string
+     */
+    private function extractDisplaySection(string $content, string $startMarker, string $endMarker): string
+    {
+        $startPos = strpos($content, $startMarker);
+        $endPos = strpos($content, $endMarker);
+
+        if ($startPos === false || $endPos === false || $endPos <= $startPos) {
+            return '';
+        }
+
+        $blockStart = $startPos + strlen($startMarker);
+        return substr($content, $blockStart, $endPos - $blockStart);
     }
 
     /* ---------------------------------------------------------------------
@@ -261,7 +274,7 @@ class WikiPropertyStore
         $lines = [];
 
         if ($property->getDescription() !== '') {
-            $lines[] = $property->getDescription();
+            $lines[] = 'Description: ' . $property->getDescription();
             $lines[] = '';
         }
 

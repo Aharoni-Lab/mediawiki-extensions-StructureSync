@@ -59,15 +59,13 @@ create_property_with_display() {
     local display_block="$4"  # Display template/type block
     
     docker compose exec -T mediawiki bash -c "php maintenance/edit.php -b 'Property:$name' <<'PROPEOF'
-$description
+<!-- StructureSync Start -->
+Description: $description
 
 [[Has type::$type]]
 
-<!-- StructureSync Display Start -->
-
 $display_block
-
-<!-- StructureSync Display End -->
+<!-- StructureSync End -->
 
 [[Category:Properties]]
 PROPEOF
@@ -235,9 +233,9 @@ echo "==> Creating test categories with schema..."
 echo "  - Base categories..."
 
 # Base Person category (simple base category with basic schema)
-create_category "Person" "A person in our organization.
+create_category "Person" "<!-- StructureSync Start -->
+Description: A person in our organization.
 
-<!-- StructureSync Schema Start -->
 === Required Properties ===
 [[Has required property::Property:Has full name]]
 [[Has required property::Property:Has email]]
@@ -259,12 +257,12 @@ create_category "Person" "A person in our organization.
 |Has display section name=Biography
 |Has display section property=Property:Has biography
 }}
-<!-- StructureSync Schema End -->"
+<!-- StructureSync End -->"
 
 # LabMember category (base category for lab members)
-create_category "LabMember" "A member of the lab.
+create_category "LabMember" "<!-- StructureSync Start -->
+Description: A member of the lab.
 
-<!-- StructureSync Schema Start -->
 === Required Properties ===
 [[Has required property::Property:Has lab role]]
 [[Has required property::Property:Has start date]]
@@ -273,24 +271,24 @@ create_category "LabMember" "A member of the lab.
 [[Has optional property::Property:Has biography]]
 [[Has optional property::Property:Has end date]]
 [[Has optional property::Property:Has active status]]
-<!-- StructureSync Schema End -->"
+<!-- StructureSync End -->"
 
 # Organization category (base category, no parents)
-create_category "Organization" "An organization or institution.
+create_category "Organization" "<!-- StructureSync Start -->
+Description: An organization or institution.
 
-<!-- StructureSync Schema Start -->
 === Required Properties ===
 [[Has required property::Property:Has full name]]
 
 === Optional Properties ===
 [[Has optional property::Property:Has website]]
 [[Has optional property::Property:Has geographic location]]
-<!-- StructureSync Schema End -->"
+<!-- StructureSync End -->"
 
 # Lab category (inherits from Organization)
-create_category "Lab" "A research lab or group.
+create_category "Lab" "<!-- StructureSync Start -->
+Description: A research lab or group.
 
-<!-- StructureSync Schema Start -->
 [[Has parent category::Category:Organization]]
 
 === Required Properties ===
@@ -305,14 +303,14 @@ create_category "Lab" "A research lab or group.
 |Has display section name=Research
 |Has display section property=Property:Has research area
 }}
-<!-- StructureSync Schema End -->
+<!-- StructureSync End -->
 
 [[Category:Organization]]"
 
 # Publication category (standalone category)
-create_category "Publication" "A research publication.
+create_category "Publication" "<!-- StructureSync Start -->
+Description: A research publication.
 
-<!-- StructureSync Schema Start -->
 === Required Properties ===
 [[Has required property::Property:Has full name]]
 [[Has required property::Property:Has publication date]]
@@ -326,12 +324,12 @@ create_category "Publication" "A research publication.
 |Has display section property=Property:Has publication date
 |Has display section property=Property:Has keywords
 }}
-<!-- StructureSync Schema End -->"
+<!-- StructureSync End -->"
 
 # Project category (base category)
-create_category "Project" "A research project.
+create_category "Project" "<!-- StructureSync Start -->
+Description: A research project.
 
-<!-- StructureSync Schema Start -->
 === Required Properties ===
 [[Has required property::Property:Has full name]]
 
@@ -339,14 +337,14 @@ create_category "Project" "A research project.
 [[Has optional property::Property:Has start date]]
 [[Has optional property::Property:Has end date]]
 [[Has optional property::Property:Has research area]]
-<!-- StructureSync Schema End -->"
+<!-- StructureSync End -->"
 
 echo "  - Single inheritance hierarchies..."
 
 # Faculty category (inherits from Person only)
-create_category "Faculty" "Faculty member.
+create_category "Faculty" "<!-- StructureSync Start -->
+Description: Faculty member.
 
-<!-- StructureSync Schema Start -->
 [[Has parent category::Category:Person]]
 
 === Required Properties ===
@@ -372,14 +370,14 @@ create_category "Faculty" "Faculty member.
 |Has display section property=Property:Has publication count
 |Has display section property=Property:Has h index
 }}
-<!-- StructureSync Schema End -->
+<!-- StructureSync End -->
 
 [[Category:Person]]"
 
 # Student category (base for all students, inherits from Person)
-create_category "Student" "A student.
+create_category "Student" "<!-- StructureSync Start -->
+Description: A student.
 
-<!-- StructureSync Schema Start -->
 [[Has parent category::Category:Person]]
 
 === Required Properties ===
@@ -396,14 +394,14 @@ create_category "Student" "A student.
 |Has display section property=Property:Has academic level
 |Has display section property=Property:Has cohort year
 }}
-<!-- StructureSync Schema End -->
+<!-- StructureSync End -->
 
 [[Category:Person]]"
 
 # Undergraduate category (inherits from Student, single inheritance chain)
-create_category "Undergraduate" "An undergraduate student.
+create_category "Undergraduate" "<!-- StructureSync Start -->
+Description: An undergraduate student.
 
-<!-- StructureSync Schema Start -->
 [[Has parent category::Category:Student]]
 
 === Optional Properties ===
@@ -413,16 +411,16 @@ create_category "Undergraduate" "An undergraduate student.
 |Has display section name=Student Information
 |Has display section property=Property:Has employment status
 }}
-<!-- StructureSync Schema End -->
+<!-- StructureSync End -->
 
 [[Category:Student]]"
 
 echo "  - Multiple inheritance hierarchies..."
 
 # GraduateStudent category (multiple inheritance: Person + LabMember)
-create_category "GraduateStudent" "A graduate student in the lab.
+create_category "GraduateStudent" "<!-- StructureSync Start -->
+Description: A graduate student in the lab.
 
-<!-- StructureSync Schema Start -->
 [[Has parent category::Category:Person]]
 [[Has parent category::Category:LabMember]]
 
@@ -447,15 +445,15 @@ create_category "GraduateStudent" "A graduate student in the lab.
 |Has display section name=Research
 |Has display section property=Property:Has research interests
 }}
-<!-- StructureSync Schema End -->
+<!-- StructureSync End -->
 
 [[Category:Person]]
 [[Category:LabMember]]"
 
 # Postdoc category (multiple inheritance: Person + LabMember)
-create_category "Postdoc" "A postdoctoral researcher in the lab.
+create_category "Postdoc" "<!-- StructureSync Start -->
+Description: A postdoctoral researcher in the lab.
 
-<!-- StructureSync Schema Start -->
 [[Has parent category::Category:Person]]
 [[Has parent category::Category:LabMember]]
 
@@ -473,15 +471,15 @@ create_category "Postdoc" "A postdoctoral researcher in the lab.
 |Has display section property=Property:Has research interests
 |Has display section property=Property:Has publication count
 }}
-<!-- StructureSync Schema End -->
+<!-- StructureSync End -->
 
 [[Category:Person]]
 [[Category:LabMember]]"
 
 # PI category (Principal Investigator, inherits from Faculty + LabMember)
-create_category "PI" "A principal investigator (lab head).
+create_category "PI" "<!-- StructureSync Start -->
+Description: A principal investigator (lab head).
 
-<!-- StructureSync Schema Start -->
 [[Has parent category::Category:Faculty]]
 [[Has parent category::Category:LabMember]]
 
@@ -495,7 +493,7 @@ create_category "PI" "A principal investigator (lab head).
 |Has display section name=Lab Information
 |Has display section property=Property:Has lab
 }}
-<!-- StructureSync Schema End -->
+<!-- StructureSync End -->
 
 [[Category:Faculty]]
 [[Category:LabMember]]"
@@ -503,9 +501,9 @@ create_category "PI" "A principal investigator (lab head).
 echo "  - Deep hierarchy examples..."
 
 # PhDStudent category (deep inheritance: Person -> Student -> GraduateStudent + LabMember)
-create_category "PhDStudent" "A PhD student in the lab.
+create_category "PhDStudent" "<!-- StructureSync Start -->
+Description: A PhD student in the lab.
 
-<!-- StructureSync Schema Start -->
 [[Has parent category::Category:GraduateStudent]]
 
 === Optional Properties ===
@@ -517,14 +515,14 @@ create_category "PhDStudent" "A PhD student in the lab.
 |Has display section property=Property:Has thesis title
 |Has display section property=Property:Has degree
 }}
-<!-- StructureSync Schema End -->
+<!-- StructureSync End -->
 
 [[Category:GraduateStudent]]"
 
 # MastersStudent category (deep inheritance: Person -> Student -> GraduateStudent)
-create_category "MastersStudent" "A masters student.
+create_category "MastersStudent" "<!-- StructureSync Start -->
+Description: A masters student.
 
-<!-- StructureSync Schema Start -->
 [[Has parent category::Category:GraduateStudent]]
 
 === Optional Properties ===
@@ -534,25 +532,24 @@ create_category "MastersStudent" "A masters student.
 |Has display section name=Masters Information
 |Has display section property=Property:Has thesis title
 }}
-<!-- StructureSync Schema End -->
+<!-- StructureSync End -->
 
 [[Category:GraduateStudent]]"
 
 echo "  - Edge case categories..."
 
 # EmptyCategory (category with no properties defined)
-create_category "EmptyCategory" "A category with no properties (for testing).
-
-<!-- StructureSync Schema Start -->
-<!-- StructureSync Schema End -->"
+create_category "EmptyCategory" "<!-- StructureSync Start -->
+Description: A category with no properties (for testing).
+<!-- StructureSync End -->"
 
 # SimpleCategory (category with minimal schema)
-create_category "SimpleCategory" "A simple category for testing.
+create_category "SimpleCategory" "<!-- StructureSync Start -->
+Description: A simple category for testing.
 
-<!-- StructureSync Schema Start -->
 === Required Properties ===
 [[Has required property::Property:Has full name]]
-<!-- StructureSync Schema End -->"
+<!-- StructureSync End -->"
 
 echo ""
 echo "==> Generating templates and forms..."

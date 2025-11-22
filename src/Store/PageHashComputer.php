@@ -17,8 +17,8 @@ class PageHashComputer {
 	private $pageCreator;
 
 	/** Schema content markers */
-	private const MARKER_START = '<!-- StructureSync Schema Start -->';
-	private const MARKER_END = '<!-- StructureSync Schema End -->';
+	private const MARKER_START = '<!-- StructureSync Start -->';
+	private const MARKER_END = '<!-- StructureSync End -->';
 
 	/**
 	 * @param PageCreator|null $pageCreator
@@ -46,15 +46,21 @@ class PageHashComputer {
 	}
 
 	/**
-	 * Compute hash for a Property page (entire content).
+	 * Compute hash for a Property page (only StructureSync section).
 	 *
 	 * @param string $pageContent Full page content
 	 * @return string SHA256 hash (with "sha256:" prefix)
 	 */
 	public function computePropertyHash( string $pageContent ): string {
+		$section = $this->extractSchemaSection(
+			$pageContent,
+			self::MARKER_START,
+			self::MARKER_END
+		);
+
 		// Normalize: trim whitespace for consistent hashing
-		$content = trim( $pageContent );
-		return $this->hashContent( $content );
+		$section = trim( $section );
+		return $this->hashContent( $section );
 	}
 
 	/**
