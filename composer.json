@@ -1,0 +1,57 @@
+{
+	"name": "mediawiki/structure-sync",
+	"type": "mediawiki-extension",
+	"description": "Manages MediaWiki Categories and Properties as an ontology backbone with schema export/import and automatic template/form generation",
+	"keywords": [
+		"MediaWiki",
+		"SemanticMediaWiki",
+		"PageForms",
+		"ontology",
+		"schema"
+	],
+	"license": "GPL-3.0-or-later",
+	"require": {
+		"php": ">=7.4.0",
+		"composer/installers": "^1.0.1|^2.0",
+		"symfony/yaml": "^5.0|^6.0"
+	},
+	"require-dev": {
+		"mediawiki/mediawiki-codesniffer": "^43.0",
+		"mediawiki/mediawiki-phan-config": "0.14.0",
+		"mediawiki/minus-x": "1.1.3",
+		"mediawiki/core": "^1.39",
+		"php-parallel-lint/php-console-highlighter": "1.0.0",
+		"php-parallel-lint/php-parallel-lint": "1.4.0",
+		"phpunit/phpunit": "^9.6"
+	},
+	"autoload": {
+		"psr-4": {
+			"MediaWiki\\Extension\\StructureSync\\": "src/"
+		}
+	},
+	"autoload-dev": {
+		"psr-4": {
+			"MediaWiki\\Extension\\StructureSync\\Tests\\": "tests/phpunit/"
+		}
+	},
+	"scripts": {
+		"test": [
+			"parallel-lint . --exclude vendor --exclude node_modules",
+			"minus-x check .",
+			"@phpcs"
+		],
+		"fix": [
+			"minus-x fix .",
+			"phpcbf"
+		],
+		"phan": "phan -d . --long-progress-bar",
+		"phpcs": "phpcs -sp --cache"
+	},
+	"config": {
+		"allow-plugins": {
+			"dealerdirect/phpcodesniffer-composer-installer": true,
+			"wikimedia/composer-merge-plugin": true
+		}
+	}
+}
+
