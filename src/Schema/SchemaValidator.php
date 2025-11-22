@@ -3,170 +3,209 @@
 namespace MediaWiki\Extension\StructureSync\Schema;
 
 /**
- * Validates schema structure and consistency
+ * SchemaValidator
+ * ----------------
+ * Validates category + property definitions for StructureSync.
+ *
+ * Validates:
+ *   - required top-level fields
+ *   - category definitions (parents, properties, display, forms)
+ *   - property definitions (datatype, allowed values, rangeCategory)
+ *   - missing references (properties used by categories but not defined)
+ *   - multi-parent inheritance
+ *   - circular category dependencies
  */
 class SchemaValidator {
 
 	/**
-	 * Validate schema array structure and content
+	 * Validate entire schema
 	 *
 	 * @param array $schema
-	 * @return array Array of errors (empty if valid)
+	 * @return array List of error messages
 	 */
 	public function validateSchema( array $schema ): array {
 		$errors = [];
 
-		// Check required top-level keys
+		// Basic structure
 		if ( !isset( $schema['schemaVersion'] ) ) {
 			$errors[] = 'Missing required field: schemaVersion';
 		}
 
 		if ( !isset( $schema['categories'] ) || !is_array( $schema['categories'] ) ) {
 			$errors[] = 'Missing or invalid field: categories (must be array)';
-			// Can't continue without categories
-			return $errors;
+			return $errors; // cannot continue
 		}
 
 		if ( !isset( $schema['properties'] ) || !is_array( $schema['properties'] ) ) {
 			$errors[] = 'Missing or invalid field: properties (must be array)';
+			return $errors;
 		}
 
 		$categories = $schema['categories'];
 		$properties = $schema['properties'];
 
-		// Validate each category
+		// Validate category definitions
 		foreach ( $categories as $categoryName => $categoryData ) {
-			$errors = array_merge( $errors, $this->validateCategory( $categoryName, $categoryData, $categories, $properties ) );
+			$errors = array_merge(
+				$errors,
+				$this->validateCategory( $categoryName, $categoryData, $categories, $properties )
+			);
 		}
 
-		// Validate each property
+		// Validate property definitions
 		foreach ( $properties as $propertyName => $propertyData ) {
-			$errors = array_merge( $errors, $this->validateProperty( $propertyName, $propertyData, $categories ) );
+			$errors = array_merge(
+				$errors,
+				$this->validateProperty( $propertyName, $propertyData, $categories )
+			);
 		}
 
-		// Check for circular dependencies
-		$errors = array_merge( $errors, $this->checkCircularDependencies( $categories ) );
+		// Detect inheritance cycles
+		$errors = array_merge(
+			$errors,
+			$this->checkCircularDependencies( $categories )
+		);
 
 		return $errors;
 	}
 
-	/**
-	 * Validate a single category
-	 *
-	 * @param string $categoryName
-	 * @param array $categoryData
-	 * @param array $allCategories
-	 * @param array $allProperties
-	 * @return array Errors found
-	 */
-	private function validateCategory( string $categoryName, array $categoryData, array $allCategories, array $allProperties ): array {
+
+	/* ======================================================================
+	 * CATEGORY VALIDATION
+	 * ====================================================================== */
+
+	private function validateCategory(
+		string $categoryName,
+		array $categoryData,
+		array $allCategories,
+		array $allProperties
+	): array {
 		$errors = [];
 
-		// Check parents exist
+		// --- parents --------------------------------------------------------
 		if ( isset( $categoryData['parents'] ) ) {
 			if ( !is_array( $categoryData['parents'] ) ) {
 				$errors[] = "Category '$categoryName': parents must be an array";
 			} else {
 				foreach ( $categoryData['parents'] as $parent ) {
 					if ( !isset( $allCategories[$parent] ) ) {
-						$errors[] = "Category '$categoryName': parent category '$parent' does not exist";
+						$errors[] =
+							"Category '$categoryName': parent category '$parent' does not exist";
 					}
 				}
 			}
 		}
 
-		// Check properties exist
+		// --- properties -----------------------------------------------------
 		if ( isset( $categoryData['properties'] ) ) {
-			if ( !is_array( $categoryData['properties'] ) ) {
-				$errors[] = "Category '$categoryName': properties must be an array";
-			} else {
-				// Check required properties
-				if ( isset( $categoryData['properties']['required'] ) ) {
-					if ( !is_array( $categoryData['properties']['required'] ) ) {
-						$errors[] = "Category '$categoryName': properties.required must be an array";
-					} else {
-						foreach ( $categoryData['properties']['required'] as $prop ) {
-							if ( !isset( $allProperties[$prop] ) ) {
-								$errors[] = "Category '$categoryName': required property '$prop' does not exist";
-							}
-						}
-					}
-				}
-
-				// Check optional properties
-				if ( isset( $categoryData['properties']['optional'] ) ) {
-					if ( !is_array( $categoryData['properties']['optional'] ) ) {
-						$errors[] = "Category '$categoryName': properties.optional must be an array";
-					} else {
-						foreach ( $categoryData['properties']['optional'] as $prop ) {
-							if ( !isset( $allProperties[$prop] ) ) {
-								$errors[] = "Category '$categoryName': optional property '$prop' does not exist";
-							}
-						}
-					}
-				}
-			}
+			$errors = array_merge(
+				$errors,
+				$this->validateCategoryProperties( $categoryName, $categoryData['properties'], $allProperties )
+			);
 		}
 
-		// Validate display config
+		// --- display config -----------------------------------------------
 		if ( isset( $categoryData['display'] ) ) {
-			$errors = array_merge( $errors, $this->validateDisplayConfig( $categoryName, $categoryData['display'], $allProperties ) );
+			$errors = array_merge(
+				$errors,
+				$this->validateDisplayConfig( $categoryName, $categoryData['display'], $allProperties )
+			);
 		}
 
-		// Validate form config
+		// --- form config ---------------------------------------------------
 		if ( isset( $categoryData['forms'] ) ) {
-			$errors = array_merge( $errors, $this->validateFormConfig( $categoryName, $categoryData['forms'], $allProperties ) );
+			$errors = array_merge(
+				$errors,
+				$this->validateFormConfig( $categoryName, $categoryData['forms'], $allProperties )
+			);
 		}
 
 		return $errors;
 	}
 
-	/**
-	 * Validate display configuration
-	 *
-	 * @param string $categoryName
-	 * @param array $displayConfig
-	 * @param array $allProperties
-	 * @return array Errors found
-	 */
-	private function validateDisplayConfig( string $categoryName, array $displayConfig, array $allProperties ): array {
+	private function validateCategoryProperties(
+		string $categoryName,
+		array $propertyLists,
+		array $allProperties
+	): array {
 		$errors = [];
 
-		// Validate header properties
-		if ( isset( $displayConfig['header'] ) ) {
-			if ( !is_array( $displayConfig['header'] ) ) {
+		// Required
+		if ( isset( $propertyLists['required'] ) ) {
+			if ( !is_array( $propertyLists['required'] ) ) {
+				$errors[] = "Category '$categoryName': properties.required must be an array";
+			} else {
+				foreach ( $propertyLists['required'] as $p ) {
+					if ( !isset( $allProperties[$p] ) ) {
+						$errors[] =
+							"Category '$categoryName': required property '$p' does not exist";
+					}
+				}
+			}
+		}
+
+		// Optional
+		if ( isset( $propertyLists['optional'] ) ) {
+			if ( !is_array( $propertyLists['optional'] ) ) {
+				$errors[] = "Category '$categoryName': properties.optional must be an array";
+			} else {
+				foreach ( $propertyLists['optional'] as $p ) {
+					if ( !isset( $allProperties[$p] ) ) {
+						$errors[] =
+							"Category '$categoryName': optional property '$p' does not exist";
+					}
+				}
+			}
+		}
+
+		return $errors;
+	}
+
+
+	/* ======================================================================
+	 * DISPLAY VALIDATION
+	 * ====================================================================== */
+
+	private function validateDisplayConfig(
+		string $categoryName,
+		array $config,
+		array $allProperties
+	): array {
+		$errors = [];
+
+		// header
+		if ( isset( $config['header'] ) ) {
+			if ( !is_array( $config['header'] ) ) {
 				$errors[] = "Category '$categoryName': display.header must be an array";
 			} else {
-				foreach ( $displayConfig['header'] as $prop ) {
+				foreach ( $config['header'] as $prop ) {
 					if ( !isset( $allProperties[$prop] ) ) {
-						$errors[] = "Category '$categoryName': display header property '$prop' does not exist";
+						$errors[] =
+							"Category '$categoryName': display header property '$prop' does not exist";
 					}
 				}
 			}
 		}
 
-		// Validate sections
-		if ( isset( $displayConfig['sections'] ) ) {
-			if ( !is_array( $displayConfig['sections'] ) ) {
+		// sections
+		if ( isset( $config['sections'] ) ) {
+			if ( !is_array( $config['sections'] ) ) {
 				$errors[] = "Category '$categoryName': display.sections must be an array";
 			} else {
-				foreach ( $displayConfig['sections'] as $idx => $section ) {
-					if ( !is_array( $section ) ) {
-						$errors[] = "Category '$categoryName': display.sections[$idx] must be an array";
-						continue;
-					}
-
+				foreach ( $config['sections'] as $i => $section ) {
 					if ( !isset( $section['name'] ) ) {
-						$errors[] = "Category '$categoryName': display.sections[$idx] missing 'name'";
+						$errors[] = "Category '$categoryName': display.sections[$i] missing 'name'";
 					}
 
 					if ( isset( $section['properties'] ) ) {
 						if ( !is_array( $section['properties'] ) ) {
-							$errors[] = "Category '$categoryName': display.sections[$idx].properties must be an array";
+							$errors[] =
+								"Category '$categoryName': display.sections[$i].properties must be array";
 						} else {
 							foreach ( $section['properties'] as $prop ) {
 								if ( !isset( $allProperties[$prop] ) ) {
-									$errors[] = "Category '$categoryName': display section property '$prop' does not exist";
+									$errors[] =
+										"Category '$categoryName': display section property '$prop' does not exist";
 								}
 							}
 						}
@@ -178,39 +217,37 @@ class SchemaValidator {
 		return $errors;
 	}
 
-	/**
-	 * Validate form configuration
-	 *
-	 * @param string $categoryName
-	 * @param array $formConfig
-	 * @param array $allProperties
-	 * @return array Errors found
-	 */
-	private function validateFormConfig( string $categoryName, array $formConfig, array $allProperties ): array {
+
+	/* ======================================================================
+	 * FORM VALIDATION
+	 * ====================================================================== */
+
+	private function validateFormConfig(
+		string $categoryName,
+		array $config,
+		array $allProperties
+	): array {
 		$errors = [];
 
-		// Validate sections
-		if ( isset( $formConfig['sections'] ) ) {
-			if ( !is_array( $formConfig['sections'] ) ) {
+		if ( isset( $config['sections'] ) ) {
+			if ( !is_array( $config['sections'] ) ) {
 				$errors[] = "Category '$categoryName': forms.sections must be an array";
 			} else {
-				foreach ( $formConfig['sections'] as $idx => $section ) {
-					if ( !is_array( $section ) ) {
-						$errors[] = "Category '$categoryName': forms.sections[$idx] must be an array";
-						continue;
-					}
+				foreach ( $config['sections'] as $i => $section ) {
 
 					if ( !isset( $section['name'] ) ) {
-						$errors[] = "Category '$categoryName': forms.sections[$idx] missing 'name'";
+						$errors[] = "Category '$categoryName': forms.sections[$i] missing 'name'";
 					}
 
 					if ( isset( $section['properties'] ) ) {
 						if ( !is_array( $section['properties'] ) ) {
-							$errors[] = "Category '$categoryName': forms.sections[$idx].properties must be an array";
+							$errors[] =
+								"Category '$categoryName': forms.sections[$i].properties must be array";
 						} else {
 							foreach ( $section['properties'] as $prop ) {
 								if ( !isset( $allProperties[$prop] ) ) {
-									$errors[] = "Category '$categoryName': form section property '$prop' does not exist";
+									$errors[] =
+										"Category '$categoryName': form section property '$prop' does not exist";
 								}
 							}
 						}
@@ -222,115 +259,108 @@ class SchemaValidator {
 		return $errors;
 	}
 
-	/**
-	 * Validate a single property
-	 *
-	 * @param string $propertyName
-	 * @param array $propertyData
-	 * @param array $allCategories
-	 * @return array Errors found
-	 */
-	private function validateProperty( string $propertyName, array $propertyData, array $allCategories ): array {
+
+	/* ======================================================================
+	 * PROPERTY VALIDATION
+	 * ====================================================================== */
+
+	private function validateProperty(
+		string $propertyName,
+		array $propertyData,
+		array $allCategories
+	): array {
 		$errors = [];
 
-		// Check datatype is present
+		// datatype required
 		if ( !isset( $propertyData['datatype'] ) ) {
 			$errors[] = "Property '$propertyName': missing datatype";
 		}
 
-		// Check rangeCategory exists if specified
-		if ( isset( $propertyData['rangeCategory'] ) ) {
-			$rangeCategory = $propertyData['rangeCategory'];
-			if ( !isset( $allCategories[$rangeCategory] ) ) {
-				$errors[] = "Property '$propertyName': rangeCategory '$rangeCategory' does not exist";
-			}
+		// allowedValues must be array
+		if ( isset( $propertyData['allowedValues'] ) &&
+			!is_array( $propertyData['allowedValues'] ) ) {
+
+			$errors[] = "Property '$propertyName': allowedValues must be an array";
 		}
 
-		// Check allowedValues is an array if specified
-		if ( isset( $propertyData['allowedValues'] ) && !is_array( $propertyData['allowedValues'] ) ) {
-			$errors[] = "Property '$propertyName': allowedValues must be an array";
+		// rangeCategory must exist
+		if ( isset( $propertyData['rangeCategory'] ) ) {
+			$range = $propertyData['rangeCategory'];
+			if ( !isset( $allCategories[$range] ) ) {
+				$errors[] =
+					"Property '$propertyName': rangeCategory '$range' does not exist";
+			}
 		}
 
 		return $errors;
 	}
 
-	/**
-	 * Check for circular dependencies in category hierarchy
-	 *
-	 * @param array $categories
-	 * @return array Errors found
-	 */
-	private function checkCircularDependencies( array $categories ): array {
-		$errors = [];
 
-		// Build category models
-		$categoryMap = [];
+	/* ======================================================================
+	 * CIRCULAR DEPENDENCY DETECTION
+	 * ====================================================================== */
+
+	private function checkCircularDependencies( array $categories ): array {
+		$categoryModels = [];
+
 		foreach ( $categories as $name => $data ) {
-			$categoryMap[$name] = new CategoryModel( $name, $data );
+			$categoryModels[$name] = new CategoryModel( $name, $data );
 		}
 
-		// Use InheritanceResolver to detect cycles
-		$resolver = new InheritanceResolver( $categoryMap );
-		$inheritanceErrors = $resolver->validateInheritance();
-
-		return array_merge( $errors, $inheritanceErrors );
+		$resolver = new InheritanceResolver( $categoryModels );
+		return $resolver->validateInheritance();
 	}
 
-	/**
-	 * Generate warnings (non-fatal issues)
-	 *
-	 * @param array $schema
-	 * @return array Array of warning messages
-	 */
+
+	/* ======================================================================
+	 * WARNINGS (non-fatal)
+	 * ====================================================================== */
+
 	public function generateWarnings( array $schema ): array {
 		$warnings = [];
 
-		if ( !isset( $schema['categories'] ) || !is_array( $schema['categories'] ) ) {
+		if ( !isset( $schema['categories'], $schema['properties'] ) ) {
 			return $warnings;
 		}
 
 		$categories = $schema['categories'];
-		$properties = $schema['properties'] ?? [];
+		$properties = $schema['properties'];
 
-		foreach ( $categories as $categoryName => $categoryData ) {
-			// Warn if no properties defined
-			$hasRequired = !empty( $categoryData['properties']['required'] ?? [] );
-			$hasOptional = !empty( $categoryData['properties']['optional'] ?? [] );
+		// Category warnings
+		foreach ( $categories as $name => $data ) {
+			$req = $data['properties']['required'] ?? [];
+			$opt = $data['properties']['optional'] ?? [];
 
-			if ( !$hasRequired && !$hasOptional ) {
-				$warnings[] = "Category '$categoryName': no properties defined";
+			if ( empty( $req ) && empty( $opt ) ) {
+				$warnings[] = "Category '$name': no properties defined";
 			}
 
-			// Warn if display config is missing
-			if ( empty( $categoryData['display'] ) ) {
-				$warnings[] = "Category '$categoryName': no display configuration";
+			if ( empty( $data['display'] ?? [] ) ) {
+				$warnings[] = "Category '$name': missing display configuration";
 			}
 
-			// Warn if form config is missing
-			if ( empty( $categoryData['forms'] ) ) {
-				$warnings[] = "Category '$categoryName': no form configuration";
+			if ( empty( $data['forms'] ?? [] ) ) {
+				$warnings[] = "Category '$name': missing form configuration";
 			}
 		}
 
-		// Warn about unused properties
-		$usedProperties = [];
-		foreach ( $categories as $categoryData ) {
-			if ( isset( $categoryData['properties']['required'] ) ) {
-				$usedProperties = array_merge( $usedProperties, $categoryData['properties']['required'] );
-			}
-			if ( isset( $categoryData['properties']['optional'] ) ) {
-				$usedProperties = array_merge( $usedProperties, $categoryData['properties']['optional'] );
-			}
+		// Unused property warnings
+		$used = [];
+		foreach ( $categories as $cat ) {
+			$used = array_merge(
+				$used,
+				$cat['properties']['required'] ?? [],
+				$cat['properties']['optional'] ?? []
+			);
 		}
-		$usedProperties = array_unique( $usedProperties );
+		$used = array_unique( $used );
 
-		foreach ( array_keys( $properties ) as $propertyName ) {
-			if ( !in_array( $propertyName, $usedProperties ) ) {
-				$warnings[] = "Property '$propertyName': not used by any category";
+		foreach ( array_keys( $properties ) as $p ) {
+			if ( !in_array( $p, $used, true ) ) {
+				$warnings[] = "Property '$p': not used by any category";
 			}
 		}
 
 		return $warnings;
 	}
 }
-

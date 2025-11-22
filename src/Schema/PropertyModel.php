@@ -3,162 +3,208 @@
 namespace MediaWiki\Extension\StructureSync\Schema;
 
 /**
- * Immutable value object representing a property's schema metadata
+ * Immutable value object representing the schema-level definition
+ * of a Semantic MediaWiki property.
+ *
+ * This model abstracts:
+ *   - SMW datatype
+ *   - PageForms input implications (via PropertyInputMapper)
+ *   - Allowed values (enums)
+ *   - Category range restriction for Page-type properties
+ *   - Subproperty relationships
+ *
+ * The class is intentionally immutable so that:
+ *   - Schema objects remain stable across request boundaries
+ *   - Inheritance & merging can be done safely by cloning or reconstruction
  */
 class PropertyModel {
 
-	/** @var string */
-	private $name;
+    /** @var string Canonical property name (SMW Property page name) */
+    private $name;
 
-	/** @var string */
-	private $datatype;
+    /** @var string SMW datatype string ("Text", "Page", "Number", etc.) */
+    private $datatype;
 
-	/** @var string */
-	private $label;
+    /** @var string Human-readable label displayed in forms */
+    private $label;
 
-	/** @var string */
-	private $description;
+    /** @var string Description displayed on Property: pages */
+    private $description;
 
-	/** @var string[] */
-	private $allowedValues;
+    /** @var string[] Allowed enumeration values (optional) */
+    private $allowedValues;
 
-	/** @var string|null */
-	private $rangeCategory;
+    /** @var string|null Category restriction for Page-type properties */
+    private $rangeCategory;
 
-	/** @var string|null */
-	private $subpropertyOf;
+    /** @var string|null Parent property (for SMW subproperty semantics) */
+    private $subpropertyOf;
 
-	/**
-	 * @param string $name Property name (without namespace)
-	 * @param array $data Associative array with property data
-	 */
-	public function __construct( string $name, array $data = [] ) {
-		$this->name = $name;
-		$this->datatype = $data['datatype'] ?? 'Text';
-		$this->label = $data['label'] ?? $name;
-		$this->description = $data['description'] ?? '';
-		$this->allowedValues = $data['allowedValues'] ?? [];
-		$this->rangeCategory = $data['rangeCategory'] ?? null;
-		$this->subpropertyOf = $data['subpropertyOf'] ?? null;
-	}
+    /* ---------------------------------------------------------------------
+     * CONSTRUCTOR
+     * --------------------------------------------------------------------- */
 
-	/**
-	 * @return string
-	 */
-	public function getName(): string {
-		return $this->name;
-	}
+    /**
+     * @param string $name Property name (e.g. "Has advisor")
+     * @param array $data Structured schema array
+     */
+    public function __construct( string $name, array $data = [] ) {
 
-	/**
-	 * @return string
-	 */
-	public function getDatatype(): string {
-		return $this->datatype;
-	}
+        // Property names must be canonicalized (whitespace trimmed)
+        $this->name = trim( $name );
 
-	/**
-	 * @return string
-	 */
-	public function getLabel(): string {
-		return $this->label;
-	}
+        $this->datatype      = $this->normalizeDatatype( $data['datatype'] ?? 'Text' );
+        $this->label         = $data['label'] ?? $this->name;
+        $this->description   = $data['description'] ?? '';
 
-	/**
-	 * @return string
-	 */
-	public function getDescription(): string {
-		return $this->description;
-	}
+        $this->allowedValues = is_array( $data['allowedValues'] ?? [] )
+            ? array_values( array_filter( array_map( 'trim', $data['allowedValues'] ) ) )
+            : [];
 
-	/**
-	 * @return string[]
-	 */
-	public function getAllowedValues(): array {
-		return $this->allowedValues;
-	}
+        $this->rangeCategory = isset( $data['rangeCategory'] )
+            ? trim( $data['rangeCategory'] )
+            : null;
 
-	/**
-	 * @return string|null
-	 */
-	public function getRangeCategory(): ?string {
-		return $this->rangeCategory;
-	}
+        $this->subpropertyOf = isset( $data['subpropertyOf'] )
+            ? trim( $data['subpropertyOf'] )
+            : null;
+    }
 
-	/**
-	 * @return string|null
-	 */
-	public function getSubpropertyOf(): ?string {
-		return $this->subpropertyOf;
-	}
+    /* ---------------------------------------------------------------------
+     * NORMALIZATION HELPERS
+     * --------------------------------------------------------------------- */
 
-	/**
-	 * Check if this property has allowed values
-	 *
-	 * @return bool
-	 */
-	public function hasAllowedValues(): bool {
-		return !empty( $this->allowedValues );
-	}
+    /**
+     * Normalize SMW datatype input.
+     *
+     * @param string $datatype
+     * @return string
+     */
+    private function normalizeDatatype( string $datatype ): string {
 
-	/**
-	 * Check if this property is a Page type
-	 *
-	 * @return bool
-	 */
-	public function isPageType(): bool {
-		return $this->datatype === 'Page';
-	}
+        $datatype = trim( $datatype );
 
-	/**
-	 * Convert to array representation suitable for schema export
-	 *
-	 * @return array
-	 */
-	public function toArray(): array {
-		$data = [
-			'datatype' => $this->datatype,
-			'label' => $this->label,
-			'description' => $this->description,
-		];
+        // Supported types based on SMW core datatype mappings
+        static $valid = [
+            'Text',
+            'Page',
+            'Date',
+            'Number',
+            'Email',
+            'URL',
+            'Boolean',
+            'Code',
+            'Geographic coordinate',
+            'Quantity',
+            'Temperature',
+            'Telephone number',
+        ];
 
-		if ( !empty( $this->allowedValues ) ) {
-			$data['allowedValues'] = $this->allowedValues;
-		}
+        // Unknown → Text (SMW default behavior)
+        return in_array( $datatype, $valid ) ? $datatype : 'Text';
+    }
 
-		if ( $this->rangeCategory !== null ) {
-			$data['rangeCategory'] = $this->rangeCategory;
-		}
+    /* ---------------------------------------------------------------------
+     * BASIC ACCESSORS
+     * --------------------------------------------------------------------- */
 
-		if ( $this->subpropertyOf !== null ) {
-			$data['subpropertyOf'] = $this->subpropertyOf;
-		}
+    public function getName(): string {
+        return $this->name;
+    }
 
-		return $data;
-	}
+    public function getDatatype(): string {
+        return $this->datatype;
+    }
 
-	/**
-	 * Get the SMW type string for this property
-	 *
-	 * @return string
-	 */
-	public function getSMWType(): string {
-		// Map common datatypes to SMW type strings
-		$typeMap = [
-			'Text' => 'Text',
-			'Page' => 'Page',
-			'Date' => 'Date',
-			'Number' => 'Number',
-			'Email' => 'Email',
-			'URL' => 'URL',
-			'Boolean' => 'Boolean',
-			'Code' => 'Code',
-			'Geographic coordinate' => 'Geographic coordinate',
-			'Quantity' => 'Quantity',
-			'Temperature' => 'Temperature',
-			'Telephone number' => 'Telephone number',
-		];
+    public function getLabel(): string {
+        return $this->label;
+    }
 
-		return $typeMap[$this->datatype] ?? 'Text';
-	}
+    public function getDescription(): string {
+        return $this->description;
+    }
+
+    public function getAllowedValues(): array {
+        return $this->allowedValues;
+    }
+
+    public function getRangeCategory(): ?string {
+        return $this->rangeCategory;
+    }
+
+    public function getSubpropertyOf(): ?string {
+        return $this->subpropertyOf;
+    }
+
+    /* ---------------------------------------------------------------------
+     * BOOLEAN CHECKS
+     * --------------------------------------------------------------------- */
+
+    /**
+     * Whether this property has enumeration constraints.
+     */
+    public function hasAllowedValues(): bool {
+        return !empty( $this->allowedValues );
+    }
+
+    /**
+     * Whether the property maps to the SMW "Page" type.
+     */
+    public function isPageType(): bool {
+        return $this->datatype === 'Page';
+    }
+
+    /**
+     * Whether this property is a Page-type restricted to a CATEGORY range.
+     */
+    public function isCategoryRestrictedPageType(): bool {
+        return $this->isPageType() && $this->rangeCategory !== null && $this->rangeCategory !== '';
+    }
+
+    /* ---------------------------------------------------------------------
+     * EXPORT
+     * --------------------------------------------------------------------- */
+
+    /**
+     * Convert to schema-array representation for YAML/JSON export.
+     *
+     * @return array
+     */
+    public function toArray(): array {
+
+        $data = [
+            'datatype'    => $this->datatype,
+            'label'       => $this->label,
+            'description' => $this->description,
+        ];
+
+        if ( $this->hasAllowedValues() ) {
+            $data['allowedValues'] = $this->allowedValues;
+        }
+
+        if ( $this->rangeCategory !== null ) {
+            $data['rangeCategory'] = $this->rangeCategory;
+        }
+
+        if ( $this->subpropertyOf !== null ) {
+            $data['subpropertyOf'] = $this->subpropertyOf;
+        }
+
+        return $data;
+    }
+
+    /* ---------------------------------------------------------------------
+     * SMW DATATYPE MAPPING
+     * --------------------------------------------------------------------- */
+
+    /**
+     * Returns a stable SMW datatype string for Property: page generation.
+     *
+     * @return string
+     */
+    public function getSMWType(): string {
+
+        // Explicit pass-through — normalizeDatatype() already validated types.
+        return $this->datatype;
+    }
 }
-

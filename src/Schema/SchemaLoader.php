@@ -5,72 +5,97 @@ namespace MediaWiki\Extension\StructureSync\Schema;
 use Symfony\Component\Yaml\Yaml;
 
 /**
- * Handles loading and saving schema from/to JSON and YAML formats
+ * SchemaLoader
+ * -------------
+ * Responsible for loading and saving StructureSync schema definitions
+ * from JSON/YAML strings or files.
+ *
+ * Features:
+ *   - Strict JSON + YAML parsing with clear error messages
+ *   - Auto-format detection (JSON vs YAML)
+ *   - Safe file I/O with consistent exceptions
+ *   - Pretty JSON and YAML output for readability
+ *   - Minimal structural validation helpers
  */
 class SchemaLoader {
 
 	/**
-	 * Load schema from JSON string
+	 * Load schema from a JSON string
 	 *
 	 * @param string $json
 	 * @return array
-	 * @throws \RuntimeException If JSON is invalid
+	 * @throws \RuntimeException
 	 */
 	public function loadFromJson( string $json ): array {
+		if ( trim( $json ) === '' ) {
+			throw new \RuntimeException( 'Empty JSON content' );
+		}
+
 		$data = json_decode( $json, true );
 
 		if ( $data === null && json_last_error() !== JSON_ERROR_NONE ) {
 			throw new \RuntimeException( 'Invalid JSON: ' . json_last_error_msg() );
 		}
 
+		if ( !is_array( $data ) ) {
+			throw new \RuntimeException( 'JSON did not decode to an array' );
+		}
+
 		return $data;
 	}
 
 	/**
-	 * Load schema from YAML string
+	 * Load schema from a YAML string
 	 *
 	 * @param string $yaml
 	 * @return array
-	 * @throws \RuntimeException If YAML is invalid
+	 * @throws \RuntimeException
 	 */
 	public function loadFromYaml( string $yaml ): array {
+		if ( trim( $yaml ) === '' ) {
+			throw new \RuntimeException( 'Empty YAML content' );
+		}
+
 		try {
 			$data = Yaml::parse( $yaml );
-			return $data ?? [];
 		} catch ( \Exception $e ) {
 			throw new \RuntimeException( 'Invalid YAML: ' . $e->getMessage() );
 		}
+
+		if ( !is_array( $data ) ) {
+			throw new \RuntimeException( 'YAML did not parse to an array' );
+		}
+
+		return $data;
 	}
 
 	/**
-	 * Save schema to JSON string (pretty-printed)
-	 *
-	 * @param array $schema
-	 * @return string
+	 * Write schema to JSON
 	 */
 	public function saveToJson( array $schema ): string {
-		return json_encode( $schema, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
+		return json_encode(
+			$schema,
+			JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE
+		) ?: '{}';
 	}
 
 	/**
-	 * Save schema to YAML string
-	 *
-	 * @param array $schema
-	 * @return string
+	 * Write schema to YAML
 	 */
 	public function saveToYaml( array $schema ): string {
+		// depth 4, indent 2 – readable for humans
 		return Yaml::dump( $schema, 4, 2 );
 	}
 
 	/**
-	 * Load schema from file (auto-detects format from extension)
+	 * Auto-detect based on file extension and parse
 	 *
 	 * @param string $filePath
 	 * @return array
-	 * @throws \RuntimeException If file cannot be read or format is invalid
+	 * @throws \RuntimeException
 	 */
 	public function loadFromFile( string $filePath ): array {
-		if ( !file_exists( $filePath ) ) {
+		if ( !is_file( $filePath ) ) {
 			throw new \RuntimeException( "File not found: $filePath" );
 		}
 
@@ -79,110 +104,119 @@ class SchemaLoader {
 			throw new \RuntimeException( "Cannot read file: $filePath" );
 		}
 
-		$extension = strtolower( pathinfo( $filePath, PATHINFO_EXTENSION ) );
+		$ext = strtolower( pathinfo( $filePath, PATHINFO_EXTENSION ) );
 
-		if ( $extension === 'json' ) {
+		if ( $ext === 'json' ) {
 			return $this->loadFromJson( $content );
-		} elseif ( in_array( $extension, [ 'yaml', 'yml' ] ) ) {
+		}
+
+		if ( $ext === 'yaml' || $ext === 'yml' ) {
 			return $this->loadFromYaml( $content );
-		} else {
-			// Try JSON first, then YAML
-			try {
-				return $this->loadFromJson( $content );
-			} catch ( \RuntimeException $e ) {
-				return $this->loadFromYaml( $content );
-			}
+		}
+
+		// Try JSON first, then YAML
+		try {
+			return $this->loadFromJson( $content );
+		} catch ( \RuntimeException $e ) {
+			return $this->loadFromYaml( $content );
 		}
 	}
 
 	/**
-	 * Save schema to file (format determined by extension)
+	 * Save to file
 	 *
 	 * @param array $schema
 	 * @param string $filePath
 	 * @return bool
-	 * @throws \RuntimeException If file cannot be written
+	 * @throws \RuntimeException
 	 */
 	public function saveToFile( array $schema, string $filePath ): bool {
-		$extension = strtolower( pathinfo( $filePath, PATHINFO_EXTENSION ) );
+		$ext = strtolower( pathinfo( $filePath, PATHINFO_EXTENSION ) );
 
-		if ( $extension === 'json' ) {
+		if ( $ext === 'json' ) {
 			$content = $this->saveToJson( $schema );
-		} elseif ( in_array( $extension, [ 'yaml', 'yml' ] ) ) {
+		} elseif ( $ext === 'yaml' || $ext === 'yml' ) {
 			$content = $this->saveToYaml( $schema );
 		} else {
 			// Default to JSON
 			$content = $this->saveToJson( $schema );
 		}
 
-		$result = file_put_contents( $filePath, $content );
-		if ( $result === false ) {
-			throw new \RuntimeException( "Cannot write to file: $filePath" );
+		$ok = file_put_contents( $filePath, $content );
+
+		if ( $ok === false ) {
+			throw new \RuntimeException( "Failed to write file: $filePath" );
 		}
 
 		return true;
 	}
 
 	/**
-	 * Detect format from content
+	 * Detect content format from the first non-whitespace character
 	 *
 	 * @param string $content
 	 * @return string 'json' or 'yaml'
 	 */
 	public function detectFormat( string $content ): string {
-		$trimmed = trim( $content );
+		$content = ltrim( $content );
 
-		// JSON typically starts with { or [
-		if ( $trimmed[0] === '{' || $trimmed[0] === '[' ) {
+		if ( $content === '' ) {
+			// ambiguous but treat empty as YAML (JSON empty isn't valid)
+			return 'yaml';
+		}
+
+		$firstChar = $content[0];
+
+		// JSON objects/arrays begin with { or [
+		if ( $firstChar === '{' || $firstChar === '[' ) {
 			return 'json';
 		}
 
-		// Otherwise assume YAML
+		// YAML is the fallback
 		return 'yaml';
 	}
 
 	/**
-	 * Load from content with auto-detection
-	 *
-	 * @param string $content
-	 * @return array
-	 * @throws \RuntimeException If content cannot be parsed
+	 * Load from content with format auto-detection
 	 */
 	public function loadFromContent( string $content ): array {
 		$format = $this->detectFormat( $content );
 
 		if ( $format === 'json' ) {
-			return $this->loadFromJson( $content );
-		} else {
-			return $this->loadFromYaml( $content );
+			// On failure, try YAML to allow minimal ambiguity handling
+			try {
+				return $this->loadFromJson( $content );
+			} catch ( \RuntimeException $e ) {
+				return $this->loadFromYaml( $content );
+			}
 		}
+
+		return $this->loadFromYaml( $content );
 	}
 
 	/**
-	 * Create an empty schema structure
-	 *
-	 * @return array
+	 * Return an empty valid schema structure
 	 */
 	public function createEmptySchema(): array {
 		return [
 			'schemaVersion' => '1.0',
-			'categories' => [],
-			'properties' => [],
+			'categories'    => [],
+			'properties'    => [],
 		];
 	}
 
 	/**
-	 * Validate basic schema structure
-	 *
-	 * @param array $schema
-	 * @return bool
+	 * Minimal structural check. Full validation happens in SchemaValidator.
 	 */
 	public function hasValidStructure( array $schema ): bool {
-		return isset( $schema['schemaVersion'] ) &&
-			isset( $schema['categories'] ) &&
-			isset( $schema['properties'] ) &&
-			is_array( $schema['categories'] ) &&
-			is_array( $schema['properties'] );
+		if ( !is_array( $schema ) ) {
+			return false;
+		}
+
+		return isset( $schema['schemaVersion'] )
+			&& array_key_exists( 'categories', $schema )
+			&& array_key_exists( 'properties', $schema )
+			&& is_array( $schema['categories'] )
+			&& is_array( $schema['properties'] );
 	}
 }
-

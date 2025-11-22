@@ -3,172 +3,254 @@
 namespace MediaWiki\Extension\StructureSync\Store;
 
 use MediaWiki\Extension\StructureSync\Schema\PropertyModel;
-use Title;
+use MediaWiki\MediaWikiServices;
+use MediaWiki\Title\Title;
 
 /**
- * Handles reading and writing Property pages
+ * WikiPropertyStore
+ * ------------------
+ * Responsible for reading/writing SMW Property: pages and reconstructing
+ * PropertyModel objects from the raw page content.
+ *
+ * This version provides:
+ *   - Robust parsing of SMW property metadata
+ *   - Canonical normalization of property names
+ *   - Extraction of:
+ *        * datatype            (from [[Has type::...]])
+ *        * allowed values      (from [[Allows value::...]])
+ *        * range categories    (from [[Has domain and range::Category:...]])
+ *        * subproperty links   (from [[Subproperty of::...]])
+ *        * human-readable descriptions
+ *   - SMW-correct export
  */
 class WikiPropertyStore {
 
-	/** @var PageCreator */
-	private $pageCreator;
+    /** @var PageCreator */
+    private $pageCreator;
 
-	/**
-	 * @param PageCreator|null $pageCreator
-	 */
-	public function __construct( PageCreator $pageCreator = null ) {
-		$this->pageCreator = $pageCreator ?? new PageCreator();
-	}
+    public function __construct( PageCreator $pageCreator = null ) {
+        $this->pageCreator = $pageCreator ?? new PageCreator();
+    }
 
-	/**
-	 * Read a property from the wiki
-	 *
-	 * @param string $propertyName Property name (without "Property:" prefix)
-	 * @return PropertyModel|null
-	 */
-	public function readProperty( string $propertyName ): ?PropertyModel {
-		$title = $this->pageCreator->makeTitle( $propertyName, SMW_NS_PROPERTY );
-		if ( $title === null || !$this->pageCreator->pageExists( $title ) ) {
-			return null;
-		}
+    /* ---------------------------------------------------------------------
+     * READ PROPERTY
+     * --------------------------------------------------------------------- */
 
-		$content = $this->pageCreator->getPageContent( $title );
-		if ( $content === null ) {
-			return null;
-		}
+    /**
+     * Read a property from the wiki and construct a PropertyModel.
+     *
+     * @param string $propertyName Canonical property (no "Property:" prefix)
+     * @return PropertyModel|null
+     */
+    public function readProperty( string $propertyName ): ?PropertyModel {
 
-		// Parse property metadata from page content
-		$data = $this->parsePropertyContent( $content, $propertyName );
+        $canonical = $this->normalizePropertyName( $propertyName );
 
-		return new PropertyModel( $propertyName, $data );
-	}
+        $title = $this->pageCreator->makeTitle( $canonical, \SMW_NS_PROPERTY );
+        if ( $title === null || !$this->pageCreator->pageExists( $title ) ) {
+            return null;
+        }
 
-	/**
-	 * Parse property page content to extract metadata
-	 *
-	 * @param string $content
-	 * @param string $propertyName
-	 * @return array
-	 */
-	private function parsePropertyContent( string $content, string $propertyName ): array {
-		$data = [];
+        $content = $this->pageCreator->getPageContent( $title );
+        if ( $content === null ) {
+            return null;
+        }
 
-		// Extract datatype from [[Has type::Type]] annotation
-		if ( preg_match( '/\[\[Has type::([^\]]+)\]\]/', $content, $matches ) ) {
-			$data['datatype'] = trim( $matches[1] );
-		}
+        $data = $this->parsePropertyContent( $content );
 
-		// Extract label from page content or default to property name
-		// Look for a line like "This is the property for [description]"
-		$lines = explode( "\n", $content );
-		foreach ( $lines as $line ) {
-			$line = trim( $line );
-			if ( !empty( $line ) && !str_starts_with( $line, '[[' ) && !str_starts_with( $line, '{{' ) && !str_starts_with( $line, '<!--' ) ) {
-				$data['description'] = $line;
-				break;
-			}
-		}
+        // Ensure label fallback
+        if ( !isset( $data['label'] ) ) {
+            $data['label'] = $canonical;
+        }
 
-		// For now, use property name as label
-		$data['label'] = $propertyName;
+        return new PropertyModel( $canonical, $data );
+    }
 
-		return $data;
-	}
+    /* ---------------------------------------------------------------------
+     * PROPERTY NAME NORMALIZATION
+     * --------------------------------------------------------------------- */
 
-	/**
-	 * Write a property to the wiki
-	 *
-	 * @param PropertyModel $property
-	 * @return bool True on success
-	 */
-	public function writeProperty( PropertyModel $property ): bool {
-		$title = $this->pageCreator->makeTitle( $property->getName(), SMW_NS_PROPERTY );
-		if ( $title === null ) {
-			return false;
-		}
+    /**
+     * Normalize property names to canonical SMW style ("Has advisor").
+     */
+    private function normalizePropertyName( string $name ): string {
+        $name = trim( $name );
+        $name = str_replace( '_', ' ', $name );
+        return $name;
+    }
 
-		$content = $this->generatePropertyContent( $property );
-		$summary = "StructureSync: Update property metadata";
+    /* ---------------------------------------------------------------------
+     * PARSE PROPERTY CONTENT
+     * --------------------------------------------------------------------- */
 
-		return $this->pageCreator->createOrUpdatePage( $title, $content, $summary );
-	}
+    /**
+     * Parse SMW property content and return structured metadata array.
+     *
+     * @param string $content Raw wiki text of Property: page
+     * @return array
+     */
+    private function parsePropertyContent( string $content ): array {
 
-	/**
-	 * Generate property page content
-	 *
-	 * @param PropertyModel $property
-	 * @return string
-	 */
-	private function generatePropertyContent( PropertyModel $property ): string {
-		$lines = [];
+        $data = [];
 
-		// Add description
-		if ( !empty( $property->getDescription() ) ) {
-			$lines[] = $property->getDescription();
-			$lines[] = '';
-		}
+        // ------------------------------------------------------------------
+        // 1. Datatype: [[Has type::Type]]
+        // ------------------------------------------------------------------
+        if ( preg_match( '/\[\[Has type::([^\|\]]+)/i', $content, $m ) ) {
+            $data['datatype'] = trim( $m[1] );
+        }
 
-		// Add datatype
-		$lines[] = '[[Has type::' . $property->getSMWType() . ']]';
+        // ------------------------------------------------------------------
+        // 2. Allowed values: * [[Allows value::Foo]]
+        // ------------------------------------------------------------------
+        preg_match_all( '/\[\[Allows value::([^\|\]]+)/i', $content, $matches );
+        if ( !empty( $matches[1] ) ) {
+            $values = array_map( 'trim', $matches[1] );
+            $data['allowedValues'] = array_values( array_unique( $values ) );
+        }
 
-		// Add allowed values if present
-		if ( $property->hasAllowedValues() ) {
-			$lines[] = '';
-			$lines[] = '== Allowed values ==';
-			foreach ( $property->getAllowedValues() as $value ) {
-				$lines[] = "* [[Allows value::$value]]";
-			}
-		}
+        // ------------------------------------------------------------------
+        // 3. Range category (Page-type restrictions): [[Has domain and range::Category:Foo]]
+        // ------------------------------------------------------------------
+        if ( preg_match( '/\[\[Has domain and range::Category:([^\|\]]+)/i', $content, $m ) ) {
+            $data['rangeCategory'] = trim( $m[1] );
+        }
 
-		// Add range category if present (for Page types)
-		if ( $property->getRangeCategory() !== null ) {
-			$lines[] = '';
-			$lines[] = '[[Has domain and range::Category:' . $property->getRangeCategory() . ']]';
-		}
+        // ------------------------------------------------------------------
+        // 4. Subproperty: [[Subproperty of::Has parent]]
+        // ------------------------------------------------------------------
+        if ( preg_match( '/\[\[Subproperty of::([^\|\]]+)/i', $content, $m ) ) {
+            $data['subpropertyOf'] = trim( str_replace( '_', ' ', $m[1] ) );
+        }
 
-		$lines[] = '';
-		$lines[] = '[[Category:Properties]]';
+        // ------------------------------------------------------------------
+        // 5. Description:
+        //    First non-empty line that does not start with:
+        //    * [[...]]
+        //    * {{
+        //    * <!
+        // ------------------------------------------------------------------
+        $lines = explode( "\n", $content );
+        foreach ( $lines as $line ) {
+            $line = trim( $line );
+            if (
+                $line !== '' &&
+                !str_starts_with( $line, '[[' ) &&
+                !str_starts_with( $line, '{{' ) &&
+                !str_starts_with( $line, '<!' )
+            ) {
+                $data['description'] = $line;
+                break;
+            }
+        }
 
-		return implode( "\n", $lines );
-	}
+        return $data;
+    }
 
-	/**
-	 * Get all properties from the wiki
-	 *
-	 * @return PropertyModel[]
-	 */
-	public function getAllProperties(): array {
-		$properties = [];
+    /* ---------------------------------------------------------------------
+     * WRITE PROPERTY CONTENT
+     * --------------------------------------------------------------------- */
 
-		// Get all pages in the Property namespace
-		$dbr = wfGetDB( DB_REPLICA );
-		$res = $dbr->select(
-			'page',
-			[ 'page_title' ],
-			[ 'page_namespace' => SMW_NS_PROPERTY ],
-			__METHOD__
-		);
+    /**
+     * Write/update an SMW Property: page
+     */
+    public function writeProperty( PropertyModel $property ): bool {
 
-		foreach ( $res as $row ) {
-			$propertyName = str_replace( '_', ' ', $row->page_title );
-			$property = $this->readProperty( $propertyName );
-			if ( $property !== null ) {
-				$properties[$propertyName] = $property;
-			}
-		}
+        $title = $this->pageCreator->makeTitle( $property->getName(), \SMW_NS_PROPERTY );
+        if ( $title === null ) {
+            return false;
+        }
 
-		return $properties;
-	}
+        $content = $this->generatePropertyContent( $property );
+        $summary = "StructureSync: Update property metadata";
 
-	/**
-	 * Check if a property exists
-	 *
-	 * @param string $propertyName
-	 * @return bool
-	 */
-	public function propertyExists( string $propertyName ): bool {
-		$title = $this->pageCreator->makeTitle( $propertyName, SMW_NS_PROPERTY );
-		return $title !== null && $this->pageCreator->pageExists( $title );
-	}
+        return $this->pageCreator->createOrUpdatePage( $title, $content, $summary );
+    }
+
+    /**
+     * Generate SMW property page content.
+     *
+     * @param PropertyModel $property
+     * @return string
+     */
+    private function generatePropertyContent( PropertyModel $property ): string {
+
+        $lines = [];
+
+        // Description
+        if ( $property->getDescription() !== '' ) {
+            $lines[] = $property->getDescription();
+            $lines[] = '';
+        }
+
+        // Datatype
+        $lines[] = '[[Has type::' . $property->getSMWType() . ']]';
+
+        // Allowed values (enum)
+        if ( $property->hasAllowedValues() ) {
+            $lines[] = '';
+            $lines[] = '== Allowed values ==';
+            foreach ( $property->getAllowedValues() as $value ) {
+                $value = str_replace( '|', ' ', $value ); // Prevent SMW parse issues
+                $lines[] = "* [[Allows value::$value]]";
+            }
+        }
+
+        // Range category
+        if ( $property->getRangeCategory() !== null ) {
+            $cat = $property->getRangeCategory();
+            $lines[] = '';
+            $lines[] = '[[Has domain and range::Category:' . $cat . ']]';
+        }
+
+        // Subproperty
+        if ( $property->getSubpropertyOf() !== null ) {
+            $parent = $property->getSubpropertyOf();
+            $lines[] = '';
+            $lines[] = '[[Subproperty of::' . $parent . ']]';
+        }
+
+        // Category for organization
+        $lines[] = '';
+        $lines[] = '[[Category:Properties]]';
+
+        return implode( "\n", $lines );
+    }
+
+    /* ---------------------------------------------------------------------
+     * STORES & QUERIES
+     * --------------------------------------------------------------------- */
+
+    public function getAllProperties(): array {
+
+        $properties = [];
+
+        $lb = MediaWikiServices::getInstance()->getDBLoadBalancer();
+        $dbr = $lb->getConnection( DB_REPLICA );
+
+        $res = $dbr->newSelectQueryBuilder()
+            ->select( 'page_title' )
+            ->from( 'page' )
+            ->where( [ 'page_namespace' => \SMW_NS_PROPERTY ] )
+            ->caller( __METHOD__ )
+            ->fetchResultSet();
+
+        foreach ( $res as $row ) {
+
+            $name = str_replace( '_', ' ', $row->page_title );
+            $property = $this->readProperty( $name );
+
+            if ( $property !== null ) {
+                $properties[$name] = $property;
+            }
+        }
+
+        return $properties;
+    }
+
+    public function propertyExists( string $propertyName ): bool {
+        $canonical = $this->normalizePropertyName( $propertyName );
+        $title = $this->pageCreator->makeTitle( $canonical, \SMW_NS_PROPERTY );
+        return $title !== null && $this->pageCreator->pageExists( $title );
+    }
 }
-

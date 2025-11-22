@@ -3,7 +3,8 @@
 namespace MediaWiki\Extension\StructureSync\Store;
 
 use MediaWiki\Extension\StructureSync\Schema\CategoryModel;
-use Title;
+use MediaWiki\MediaWikiServices;
+use MediaWiki\Title\Title;
 use SMW\DIWikiPage;
 use SMW\DIProperty;
 
@@ -251,13 +252,14 @@ class WikiCategoryStore {
 		$categories = [];
 
 		// Get all pages in the Category namespace
-		$dbr = wfGetDB( DB_REPLICA );
-		$res = $dbr->select(
-			'page',
-			[ 'page_title' ],
-			[ 'page_namespace' => NS_CATEGORY ],
-			__METHOD__
-		);
+		$lb = MediaWikiServices::getInstance()->getDBLoadBalancer();
+		$dbr = $lb->getConnection( DB_REPLICA );
+		$res = $dbr->newSelectQueryBuilder()
+			->select( 'page_title' )
+			->from( 'page' )
+			->where( [ 'page_namespace' => NS_CATEGORY ] )
+			->caller( __METHOD__ )
+			->fetchResultSet();
 
 		foreach ( $res as $row ) {
 			$categoryName = str_replace( '_', ' ', $row->page_title );

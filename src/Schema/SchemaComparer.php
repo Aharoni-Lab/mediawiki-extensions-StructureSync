@@ -3,35 +3,58 @@
 namespace MediaWiki\Extension\StructureSync\Schema;
 
 /**
- * Compares two schemas and generates a diff
+ * SchemaComparer
+ * --------------
+ * Compares two StructureSync schema arrays and produces a structured diff.
+ *
+ * Conventions:
+ *   - $schemaA is treated as the "new" schema (e.g. from an imported file)
+ *   - $schemaB is treated as the "old" schema (e.g. current wiki state)
+ *
+ * The top-level compare() result has this shape:
+ *
+ * [
+ *   'categories' => [
+ *     'added'    => [ [ 'name' => 'X', 'data' => [...] ], ... ],
+ *     'removed'  => [ [ 'name' => 'Y', 'data' => [...] ], ... ],
+ *     'modified' => [ [
+ *         'name' => 'Z',
+ *         'diff' => [ ... field-by-field diffs ... ],
+ *         'old'  => [...],   // from $schemaB
+ *         'new'  => [...],   // from $schemaA
+ *     ], ... ],
+ *     'unchanged' => [ 'Name1', 'Name2', ... ],
+ *   ],
+ *   'properties' => [ ... same structure ... ],
+ * ]
  */
 class SchemaComparer {
 
 	/**
-	 * Compare two schemas and return differences
+	 * Compare two full schema arrays and return a structured diff.
 	 *
-	 * @param array $schemaA First schema (e.g., from file)
-	 * @param array $schemaB Second schema (e.g., from wiki)
-	 * @return array Diff results with added, removed, modified items
+	 * @param array $schemaA "New" schema (usually from file)
+	 * @param array $schemaB "Old" schema (usually from wiki)
+	 * @return array
 	 */
 	public function compare( array $schemaA, array $schemaB ): array {
+		$categoriesA = $schemaA['categories'] ?? [];
+		$categoriesB = $schemaB['categories'] ?? [];
+
+		$propertiesA = $schemaA['properties'] ?? [];
+		$propertiesB = $schemaB['properties'] ?? [];
+
 		return [
-			'categories' => $this->compareCategories(
-				$schemaA['categories'] ?? [],
-				$schemaB['categories'] ?? []
-			),
-			'properties' => $this->compareProperties(
-				$schemaA['properties'] ?? [],
-				$schemaB['properties'] ?? []
-			),
+			'categories' => $this->compareCategories( $categoriesA, $categoriesB ),
+			'properties' => $this->compareProperties( $propertiesA, $propertiesB ),
 		];
 	}
 
 	/**
-	 * Compare categories between two schemas
+	 * Compare categories between two schema maps.
 	 *
-	 * @param array $categoriesA
-	 * @param array $categoriesB
+	 * @param array<string,array> $categoriesA  name => data (new)
+	 * @param array<string,array> $categoriesB  name => data (old)
 	 * @return array
 	 */
 	private function compareCategories( array $categoriesA, array $categoriesB ): array {
@@ -40,53 +63,64 @@ class SchemaComparer {
 		$modified = [];
 		$unchanged = [];
 
-		$allCategories = array_unique( array_merge(
+		$allNames = array_unique( array_merge(
 			array_keys( $categoriesA ),
 			array_keys( $categoriesB )
 		) );
+		sort( $allNames );
 
-		foreach ( $allCategories as $categoryName ) {
-			$inA = isset( $categoriesA[$categoryName] );
-			$inB = isset( $categoriesB[$categoryName] );
+		foreach ( $allNames as $categoryName ) {
+			$inA = array_key_exists( $categoryName, $categoriesA );
+			$inB = array_key_exists( $categoryName, $categoriesB );
 
 			if ( $inA && !$inB ) {
+				// New category introduced in schemaA
 				$added[] = [
 					'name' => $categoryName,
 					'data' => $categoriesA[$categoryName],
 				];
-			} elseif ( !$inA && $inB ) {
+				continue;
+			}
+
+			if ( !$inA && $inB ) {
+				// Category removed in schemaA
 				$removed[] = [
 					'name' => $categoryName,
 					'data' => $categoriesB[$categoryName],
 				];
+				continue;
+			}
+
+			// Exists in both; compare field-by-field
+			$dataA = $categoriesA[$categoryName] ?? [];
+			$dataB = $categoriesB[$categoryName] ?? [];
+
+			$diff = $this->diffCategoryData( $dataA, $dataB );
+			if ( !empty( $diff ) ) {
+				$modified[] = [
+					'name' => $categoryName,
+					'diff' => $diff,
+					'old'  => $dataB,
+					'new'  => $dataA,
+				];
 			} else {
-				$diff = $this->diffCategoryData( $categoriesA[$categoryName], $categoriesB[$categoryName] );
-				if ( !empty( $diff ) ) {
-					$modified[] = [
-						'name' => $categoryName,
-						'diff' => $diff,
-						'old' => $categoriesB[$categoryName],
-						'new' => $categoriesA[$categoryName],
-					];
-				} else {
-					$unchanged[] = $categoryName;
-				}
+				$unchanged[] = $categoryName;
 			}
 		}
 
 		return [
-			'added' => $added,
-			'removed' => $removed,
-			'modified' => $modified,
+			'added'     => $added,
+			'removed'   => $removed,
+			'modified'  => $modified,
 			'unchanged' => $unchanged,
 		];
 	}
 
 	/**
-	 * Compare properties between two schemas
+	 * Compare properties between two schema maps.
 	 *
-	 * @param array $propertiesA
-	 * @param array $propertiesB
+	 * @param array<string,array> $propertiesA name => data (new)
+	 * @param array<string,array> $propertiesB name => data (old)
 	 * @return array
 	 */
 	private function compareProperties( array $propertiesA, array $propertiesB ): array {
@@ -95,59 +129,67 @@ class SchemaComparer {
 		$modified = [];
 		$unchanged = [];
 
-		$allProperties = array_unique( array_merge(
+		$allNames = array_unique( array_merge(
 			array_keys( $propertiesA ),
 			array_keys( $propertiesB )
 		) );
+		sort( $allNames );
 
-		foreach ( $allProperties as $propertyName ) {
-			$inA = isset( $propertiesA[$propertyName] );
-			$inB = isset( $propertiesB[$propertyName] );
+		foreach ( $allNames as $propertyName ) {
+			$inA = array_key_exists( $propertyName, $propertiesA );
+			$inB = array_key_exists( $propertyName, $propertiesB );
 
 			if ( $inA && !$inB ) {
 				$added[] = [
 					'name' => $propertyName,
 					'data' => $propertiesA[$propertyName],
 				];
-			} elseif ( !$inA && $inB ) {
+				continue;
+			}
+
+			if ( !$inA && $inB ) {
 				$removed[] = [
 					'name' => $propertyName,
 					'data' => $propertiesB[$propertyName],
 				];
+				continue;
+			}
+
+			$dataA = $propertiesA[$propertyName] ?? [];
+			$dataB = $propertiesB[$propertyName] ?? [];
+
+			$diff = $this->diffPropertyData( $dataA, $dataB );
+			if ( !empty( $diff ) ) {
+				$modified[] = [
+					'name' => $propertyName,
+					'diff' => $diff,
+					'old'  => $dataB,
+					'new'  => $dataA,
+				];
 			} else {
-				$diff = $this->diffPropertyData( $propertiesA[$propertyName], $propertiesB[$propertyName] );
-				if ( !empty( $diff ) ) {
-					$modified[] = [
-						'name' => $propertyName,
-						'diff' => $diff,
-						'old' => $propertiesB[$propertyName],
-						'new' => $propertiesA[$propertyName],
-					];
-				} else {
-					$unchanged[] = $propertyName;
-				}
+				$unchanged[] = $propertyName;
 			}
 		}
 
 		return [
-			'added' => $added,
-			'removed' => $removed,
-			'modified' => $modified,
+			'added'     => $added,
+			'removed'   => $removed,
+			'modified'  => $modified,
 			'unchanged' => $unchanged,
 		];
 	}
 
 	/**
-	 * Diff two category data arrays
+	 * Field-level diff for a single category record.
 	 *
-	 * @param array $dataA New data
-	 * @param array $dataB Old data
-	 * @return array Differences
+	 * @param array $dataA New data (schemaA)
+	 * @param array $dataB Old data (schemaB)
+	 * @return array Differences keyed by field name
 	 */
 	private function diffCategoryData( array $dataA, array $dataB ): array {
 		$diff = [];
 
-		// Compare parents
+		// parents (order-insensitive)
 		$parentsA = $dataA['parents'] ?? [];
 		$parentsB = $dataB['parents'] ?? [];
 		if ( $this->arraysDiffer( $parentsA, $parentsB ) ) {
@@ -157,7 +199,7 @@ class SchemaComparer {
 			];
 		}
 
-		// Compare label
+		// label
 		$labelA = $dataA['label'] ?? '';
 		$labelB = $dataB['label'] ?? '';
 		if ( $labelA !== $labelB ) {
@@ -167,7 +209,7 @@ class SchemaComparer {
 			];
 		}
 
-		// Compare description
+		// description
 		$descA = $dataA['description'] ?? '';
 		$descB = $dataB['description'] ?? '';
 		if ( $descA !== $descB ) {
@@ -177,7 +219,7 @@ class SchemaComparer {
 			];
 		}
 
-		// Compare properties
+		// properties: required / optional (order-insensitive)
 		$propsA = $dataA['properties'] ?? [];
 		$propsB = $dataB['properties'] ?? [];
 
@@ -199,7 +241,7 @@ class SchemaComparer {
 			];
 		}
 
-		// Compare display config (simplified - just check if different)
+		// display config (treated as order-sensitive; layout semantics matter)
 		$displayA = $dataA['display'] ?? [];
 		$displayB = $dataB['display'] ?? [];
 		if ( $this->deepDiffer( $displayA, $displayB ) ) {
@@ -209,7 +251,7 @@ class SchemaComparer {
 			];
 		}
 
-		// Compare form config
+		// forms config (order-sensitive; form layout)
 		$formsA = $dataA['forms'] ?? [];
 		$formsB = $dataB['forms'] ?? [];
 		if ( $this->deepDiffer( $formsA, $formsB ) ) {
@@ -219,20 +261,32 @@ class SchemaComparer {
 			];
 		}
 
+		// Forward-compatible: any extra keys not explicitly handled above
+		$knownKeys = [ 'parents', 'label', 'description', 'properties', 'display', 'forms' ];
+		$extraA = array_diff_key( $dataA, array_flip( $knownKeys ) );
+		$extraB = array_diff_key( $dataB, array_flip( $knownKeys ) );
+
+		if ( $this->deepDiffer( $extraA, $extraB ) ) {
+			$diff['extra'] = [
+				'old' => $extraB,
+				'new' => $extraA,
+			];
+		}
+
 		return $diff;
 	}
 
 	/**
-	 * Diff two property data arrays
+	 * Field-level diff for a single property record.
 	 *
-	 * @param array $dataA New data
-	 * @param array $dataB Old data
-	 * @return array Differences
+	 * @param array $dataA New data (schemaA)
+	 * @param array $dataB Old data (schemaB)
+	 * @return array Differences keyed by field name
 	 */
 	private function diffPropertyData( array $dataA, array $dataB ): array {
 		$diff = [];
 
-		// Compare datatype
+		// datatype
 		$datatypeA = $dataA['datatype'] ?? '';
 		$datatypeB = $dataB['datatype'] ?? '';
 		if ( $datatypeA !== $datatypeB ) {
@@ -242,7 +296,7 @@ class SchemaComparer {
 			];
 		}
 
-		// Compare label
+		// label
 		$labelA = $dataA['label'] ?? '';
 		$labelB = $dataB['label'] ?? '';
 		if ( $labelA !== $labelB ) {
@@ -252,7 +306,7 @@ class SchemaComparer {
 			];
 		}
 
-		// Compare description
+		// description
 		$descA = $dataA['description'] ?? '';
 		$descB = $dataB['description'] ?? '';
 		if ( $descA !== $descB ) {
@@ -262,7 +316,7 @@ class SchemaComparer {
 			];
 		}
 
-		// Compare allowed values
+		// allowed values (order-insensitive)
 		$allowedA = $dataA['allowedValues'] ?? [];
 		$allowedB = $dataB['allowedValues'] ?? [];
 		if ( $this->arraysDiffer( $allowedA, $allowedB ) ) {
@@ -272,7 +326,7 @@ class SchemaComparer {
 			];
 		}
 
-		// Compare range category
+		// rangeCategory
 		$rangeA = $dataA['rangeCategory'] ?? null;
 		$rangeB = $dataB['rangeCategory'] ?? null;
 		if ( $rangeA !== $rangeB ) {
@@ -282,11 +336,34 @@ class SchemaComparer {
 			];
 		}
 
+		// subpropertyOf (newly added)
+		$subA = $dataA['subpropertyOf'] ?? null;
+		$subB = $dataB['subpropertyOf'] ?? null;
+		if ( $subA !== $subB ) {
+			$diff['subpropertyOf'] = [
+				'old' => $subB,
+				'new' => $subA,
+			];
+		}
+
+		// Forward-compatible: any extra keys not explicitly handled
+		$knownKeys = [ 'datatype', 'label', 'description', 'allowedValues', 'rangeCategory', 'subpropertyOf' ];
+		$extraA = array_diff_key( $dataA, array_flip( $knownKeys ) );
+		$extraB = array_diff_key( $dataB, array_flip( $knownKeys ) );
+
+		if ( $this->deepDiffer( $extraA, $extraB ) ) {
+			$diff['extra'] = [
+				'old' => $extraB,
+				'new' => $extraA,
+			];
+		}
+
 		return $diff;
 	}
 
 	/**
-	 * Check if two arrays differ (order-independent for simple arrays)
+	 * Check if two "flat" arrays differ, ignoring order.
+	 * Intended for simple lists of scalars (e.g., required properties).
 	 *
 	 * @param array $a
 	 * @param array $b
@@ -297,25 +374,35 @@ class SchemaComparer {
 			return true;
 		}
 
-		sort( $a );
-		sort( $b );
+		// Normalize values as strings to prevent minor type differences
+		$aNorm = array_map( 'strval', $a );
+		$bNorm = array_map( 'strval', $b );
 
-		return $a !== $b;
+		sort( $aNorm );
+		sort( $bNorm );
+
+		return $aNorm !== $bNorm;
 	}
 
 	/**
-	 * Deep comparison of arrays/values
+	 * Deep comparison of complex structures (arrays/scalars).
+	 *
+	 * Order-sensitive by design, since this is currently used for layout-like
+	 * structures (display/forms) and "extra" blobs where we assume order matters.
 	 *
 	 * @param mixed $a
 	 * @param mixed $b
 	 * @return bool True if different
 	 */
 	private function deepDiffer( $a, $b ): bool {
+		// For now, treat structural order as meaningful.
+		// If we later need order-insensitive nested comparison,
+		// we can add a normalize() step here.
 		return json_encode( $a ) !== json_encode( $b );
 	}
 
 	/**
-	 * Generate a human-readable summary of differences
+	 * Generate a human-readable summary from compare() output.
 	 *
 	 * @param array $diff Result from compare()
 	 * @return string
@@ -323,35 +410,24 @@ class SchemaComparer {
 	public function generateSummary( array $diff ): string {
 		$lines = [];
 
-		$catDiff = $diff['categories'] ?? [];
+		$catDiff  = $diff['categories'] ?? [];
 		$propDiff = $diff['properties'] ?? [];
 
 		// Categories
-		$addedCount = count( $catDiff['added'] ?? [] );
-		$removedCount = count( $catDiff['removed'] ?? [] );
-		$modifiedCount = count( $catDiff['modified'] ?? [] );
-		$unchangedCount = count( $catDiff['unchanged'] ?? [] );
-
-		$lines[] = "Categories:";
-		$lines[] = "  Added: $addedCount";
-		$lines[] = "  Removed: $removedCount";
-		$lines[] = "  Modified: $modifiedCount";
-		$lines[] = "  Unchanged: $unchangedCount";
+		$lines[] = 'Categories:';
+		$lines[] = '  Added: '     . count( $catDiff['added']     ?? [] );
+		$lines[] = '  Removed: '   . count( $catDiff['removed']   ?? [] );
+		$lines[] = '  Modified: '  . count( $catDiff['modified']  ?? [] );
+		$lines[] = '  Unchanged: ' . count( $catDiff['unchanged'] ?? [] );
 
 		// Properties
-		$addedCount = count( $propDiff['added'] ?? [] );
-		$removedCount = count( $propDiff['removed'] ?? [] );
-		$modifiedCount = count( $propDiff['modified'] ?? [] );
-		$unchangedCount = count( $propDiff['unchanged'] ?? [] );
-
-		$lines[] = "";
-		$lines[] = "Properties:";
-		$lines[] = "  Added: $addedCount";
-		$lines[] = "  Removed: $removedCount";
-		$lines[] = "  Modified: $modifiedCount";
-		$lines[] = "  Unchanged: $unchangedCount";
+		$lines[] = '';
+		$lines[] = 'Properties:';
+		$lines[] = '  Added: '     . count( $propDiff['added']     ?? [] );
+		$lines[] = '  Removed: '   . count( $propDiff['removed']   ?? [] );
+		$lines[] = '  Modified: '  . count( $propDiff['modified']  ?? [] );
+		$lines[] = '  Unchanged: ' . count( $propDiff['unchanged'] ?? [] );
 
 		return implode( "\n", $lines );
 	}
 }
-

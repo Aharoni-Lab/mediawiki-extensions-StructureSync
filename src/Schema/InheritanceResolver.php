@@ -3,234 +3,258 @@
 namespace MediaWiki\Extension\StructureSync\Schema;
 
 /**
- * Resolves multiple inheritance for categories using C3 linearization
+ * InheritanceResolver
+ * --------------------
+ * Resolves multiple inheritance for categories (C3 linearization) and produces
+ * fully merged, "effective" CategoryModel instances.
+ *
+ * This class is responsible for:
+ *   - computing deterministic ancestor chains
+ *   - providing topologically sorted inheritance order
+ *   - merging CategoryModel objects in the correct order (root → leaf)
+ *
+ * C3 linearization ensures:
+ *   - monotonicity
+ *   - local precedence order preservation
+ *   - consistency under multiple inheritance
  */
 class InheritanceResolver {
 
-	/** @var array<string,CategoryModel> */
-	private $categoryMap;
+    /** @var array<string,CategoryModel> */
+    private $categoryMap;
 
-	/** @var array<string,string[]> Cache of resolved ancestors */
-	private $ancestorCache = [];
+    /** @var array<string,string[]> Memoized ancestor chains */
+    private $ancestorCache = [];
 
-	/**
-	 * @param array<string,CategoryModel> $categoryMap Map of category name => CategoryModel
-	 */
-	public function __construct( array $categoryMap ) {
-		$this->categoryMap = $categoryMap;
-	}
+    /**
+     * @param array<string,CategoryModel> $categoryMap
+     */
+    public function __construct( array $categoryMap ) {
+        $this->categoryMap = $categoryMap;
+    }
 
-	/**
-	 * Get ordered list of ancestors for a category using C3 linearization
-	 *
-	 * @param string $categoryName
-	 * @return string[] Ordered list of ancestor names (includes the category itself)
-	 * @throws \RuntimeException If circular dependency detected
-	 */
-	public function getAncestors( string $categoryName ): array {
-		if ( isset( $this->ancestorCache[$categoryName] ) ) {
-			return $this->ancestorCache[$categoryName];
-		}
+    /* =========================================================================
+     * Public API
+     * ========================================================================= */
 
-		if ( !isset( $this->categoryMap[$categoryName] ) ) {
-			return [ $categoryName ];
-		}
+    /**
+     * Return a C3-linearized list of ancestors including the category itself.
+     * Example: ["Entity", "Person", "GraduateStudent", "PhDStudent"]
+     *
+     * @param string $categoryName
+     * @return string[]
+     */
+    public function getAncestors( string $categoryName ): array {
+        if ( isset( $this->ancestorCache[$categoryName] ) ) {
+            return $this->ancestorCache[$categoryName];
+        }
 
-		$ancestors = $this->c3Linearization( $categoryName, [] );
-		$this->ancestorCache[$categoryName] = $ancestors;
+        if ( !isset( $this->categoryMap[$categoryName] ) ) {
+            // Unknown category still returns itself
+            return [ $categoryName ];
+        }
 
-		return $ancestors;
-	}
+        $ancestors = $this->c3Linearization( $categoryName, [] );
 
-	/**
-	 * C3 linearization algorithm for multiple inheritance
-	 *
-	 * @param string $categoryName
-	 * @param array $visiting Track categories being visited to detect cycles
-	 * @return string[]
-	 * @throws \RuntimeException If circular dependency detected
-	 */
-	private function c3Linearization( string $categoryName, array $visiting ): array {
-		// Detect circular dependencies
-		if ( in_array( $categoryName, $visiting ) ) {
-			throw new \RuntimeException(
-				"Circular dependency detected in category: $categoryName"
-			);
-		}
+        // Cache canonical order
+        $this->ancestorCache[$categoryName] = $ancestors;
+        return $ancestors;
+    }
 
-		if ( !isset( $this->categoryMap[$categoryName] ) ) {
-			return [ $categoryName ];
-		}
+    /**
+     * Produce the fully merged effective category model:
+     *   root-most ancestor merged first, then next ancestor, ... then category.
+     *
+     * @param string $categoryName
+     * @return CategoryModel
+     */
+    public function getEffectiveCategory( string $categoryName ): CategoryModel {
 
-		$category = $this->categoryMap[$categoryName];
-		$parents = $category->getParents();
+        // If category not defined, produce an empty one
+        if ( !isset( $this->categoryMap[$categoryName] ) ) {
+            return new CategoryModel( $categoryName );
+        }
 
-		// Base case: no parents
-		if ( empty( $parents ) ) {
-			return [ $categoryName ];
-		}
+        $linear = $this->getAncestors( $categoryName );
 
-		$visiting[] = $categoryName;
+        // $linear is e.g. ["Person", "LabMember", "GraduateStudent"]
+        // The *last* one is the most specific (the category itself).
+        // Merge in correct order: first root-most parent → final category.
 
-		// Get linearizations of all parents
-		$parentLinearizations = [];
-		foreach ( $parents as $parent ) {
-			$parentLinearizations[] = $this->c3Linearization( $parent, $visiting );
-		}
+        $effective = null;
+        foreach ( $linear as $name ) {
+            $current = $this->categoryMap[$name] ?? new CategoryModel( $name );
+            if ( $effective === null ) {
+                // First (root-most) ancestor becomes starting point
+                $effective = $current;
+            } else {
+                // Merge child with parent (parent → child)
+                $effective = $current->mergeWithParent( $effective );
+            }
+        }
 
-		// Merge parent linearizations with the parent list
-		$merged = $this->c3Merge( array_merge( $parentLinearizations, [ $parents ] ) );
+        return $effective;
+    }
 
-		// Prepend current category
-		array_unshift( $merged, $categoryName );
+    /**
+     * Validate all categories and detect circular inheritance.
+     *
+     * @return array<string> list of error messages
+     */
+    public function validateInheritance(): array {
+        $errors = [];
 
-		return $merged;
-	}
+        foreach ( array_keys( $this->categoryMap ) as $categoryName ) {
+            try {
+                $this->getAncestors( $categoryName );
+            }
+            catch ( \RuntimeException $e ) {
+                $errors[] = $e->getMessage();
+            }
+        }
 
-	/**
-	 * Merge multiple linearizations using C3 algorithm
-	 *
-	 * @param array $sequences Array of sequences to merge
-	 * @return array
-	 */
-	private function c3Merge( array $sequences ): array {
-		$result = [];
+        return $errors;
+    }
 
-		while ( !$this->allSequencesEmpty( $sequences ) ) {
-			$candidate = $this->findGoodHead( $sequences );
+    /**
+     * Whether A is in B’s ancestor list.
+     *
+     * @param string $categoryA
+     * @param string $categoryB
+     * @return bool
+     */
+    public function isAncestorOf( string $categoryA, string $categoryB ): bool {
+        $anc = $this->getAncestors( $categoryB );
+        return in_array( $categoryA, $anc, true );
+    }
 
-			if ( $candidate === null ) {
-				// Cannot find a good head - inconsistent hierarchy
-				// Fall back to simple strategy: take first available
-				foreach ( $sequences as $seq ) {
-					if ( !empty( $seq ) ) {
-						$candidate = $seq[0];
-						break;
-					}
-				}
-			}
+    /* =========================================================================
+     * C3 Linearization
+     * ========================================================================= */
 
-			if ( $candidate === null ) {
-				break;
-			}
+    /**
+     * Compute C3 linearization for a category.
+     *
+     * @param string $categoryName
+     * @param string[] $visiting stack for cycle detection
+     * @return string[]
+     */
+    private function c3Linearization( string $categoryName, array $visiting ): array {
 
-			$result[] = $candidate;
+        // Cycle detection
+        if ( in_array( $categoryName, $visiting, true ) ) {
+            throw new \RuntimeException(
+                "Circular inheritance detected: " . implode( " → ", $visiting ) . " → $categoryName"
+            );
+        }
 
-			// Remove candidate from all sequences
-			foreach ( $sequences as $key => $seq ) {
-				$sequences[$key] = array_values( array_filter( $seq, static function ( $item ) use ( $candidate ) {
-					return $item !== $candidate;
-				} ) );
-			}
-		}
+        if ( !isset( $this->categoryMap[$categoryName] ) ) {
+            return [ $categoryName ];
+        }
 
-		return $result;
-	}
+        $category = $this->categoryMap[$categoryName];
+        $parents = $category->getParents();
 
-	/**
-	 * Check if all sequences are empty
-	 *
-	 * @param array $sequences
-	 * @return bool
-	 */
-	private function allSequencesEmpty( array $sequences ): bool {
-		foreach ( $sequences as $seq ) {
-			if ( !empty( $seq ) ) {
-				return false;
-			}
-		}
-		return true;
-	}
+        // Base case
+        if ( empty( $parents ) ) {
+            return [ $categoryName ];
+        }
 
-	/**
-	 * Find a good head (appears as head but not in tail of any sequence)
-	 *
-	 * @param array $sequences
-	 * @return string|null
-	 */
-	private function findGoodHead( array $sequences ): ?string {
-		// Try each head
-		foreach ( $sequences as $seq ) {
-			if ( empty( $seq ) ) {
-				continue;
-			}
+        $visiting[] = $categoryName;
 
-			$head = $seq[0];
-			$isGood = true;
+        // Recursively linearize parents
+        $linearizations = [];
+        foreach ( $parents as $p ) {
+            $linearizations[] = $this->c3Linearization( $p, $visiting );
+        }
 
-			// Check if this head appears in the tail of any sequence
-			foreach ( $sequences as $otherSeq ) {
-				if ( count( $otherSeq ) > 1 && in_array( $head, array_slice( $otherSeq, 1 ) ) ) {
-					$isGood = false;
-					break;
-				}
-			}
+        // Merge parent lists + direct parent list
+        $merged = $this->c3Merge( array_merge( $linearizations, [ $parents ] ) );
 
-			if ( $isGood ) {
-				return $head;
-			}
-		}
+        // Prepend this category
+        array_unshift( $merged, $categoryName );
 
-		return null;
-	}
+        return $merged;
+    }
 
-	/**
-	 * Get effective properties for a category (merged with ancestors)
-	 *
-	 * @param string $categoryName
-	 * @return CategoryModel Category with inherited properties merged
-	 */
-	public function getEffectiveCategory( string $categoryName ): CategoryModel {
-		if ( !isset( $this->categoryMap[$categoryName] ) ) {
-			return new CategoryModel( $categoryName );
-		}
+    /**
+     * C3 merge step.
+     *
+     * @param array<int,string[]> $sequences
+     * @return string[]
+     */
+    private function c3Merge( array $sequences ): array {
 
-		$ancestors = $this->getAncestors( $categoryName );
-		// Remove the category itself from ancestors list
-		$ancestorsOnly = array_slice( $ancestors, 1 );
+        $output = [];
 
-		$category = $this->categoryMap[$categoryName];
+        while ( !$this->allEmpty( $sequences ) ) {
 
-		// Merge properties from ancestors (in reverse order, so closest ancestors override)
-		foreach ( array_reverse( $ancestorsOnly ) as $ancestorName ) {
-			if ( isset( $this->categoryMap[$ancestorName] ) ) {
-				$ancestor = $this->categoryMap[$ancestorName];
-				$category = $category->mergeWithParent( $ancestor );
-			}
-		}
+            $candidate = $this->findC3Head( $sequences );
 
-		return $category;
-	}
+            if ( $candidate === null ) {
+                // This should never happen for a consistent hierarchy
+                throw new \RuntimeException(
+                    "C3 merge failed: inconsistent parent ordering."
+                );
+            }
 
-	/**
-	 * Validate all categories for circular dependencies
-	 *
-	 * @return array Array of error messages
-	 */
-	public function validateInheritance(): array {
-		$errors = [];
+            $output[] = $candidate;
 
-		foreach ( array_keys( $this->categoryMap ) as $categoryName ) {
-			try {
-				$this->getAncestors( $categoryName );
-			} catch ( \RuntimeException $e ) {
-				$errors[] = $e->getMessage();
-			}
-		}
+            // Remove candidate from sequences
+            foreach ( $sequences as $i => $seq ) {
+                $sequences[$i] = array_values(
+                    array_filter(
+                        $seq,
+                        static fn ( $x ) => $x !== $candidate
+                    )
+                );
+            }
+        }
 
-		return $errors;
-	}
+        return $output;
+    }
 
-	/**
-	 * Check if categoryA is an ancestor of categoryB
-	 *
-	 * @param string $categoryA
-	 * @param string $categoryB
-	 * @return bool
-	 */
-	public function isAncestorOf( string $categoryA, string $categoryB ): bool {
-		$ancestors = $this->getAncestors( $categoryB );
-		return in_array( $categoryA, $ancestors );
-	}
+    /* =========================================================================
+     * Helpers
+     * ========================================================================= */
+
+    private function allEmpty( array $sequences ): bool {
+        foreach ( $sequences as $seq ) {
+            if ( !empty( $seq ) ) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    /**
+     * Return the first head element that does NOT appear in the tail of any sequence.
+     * This is the fundamental C3 constraint.
+     *
+     * @param array<int,array> $sequences
+     * @return string|null
+     */
+    private function findC3Head( array $sequences ): ?string {
+        foreach ( $sequences as $seq ) {
+            if ( empty( $seq ) ) {
+                continue;
+            }
+
+            $head = $seq[0];
+            $valid = true;
+
+            foreach ( $sequences as $other ) {
+                if ( count( $other ) > 1 && in_array( $head, array_slice( $other, 1 ), true ) ) {
+                    $valid = false;
+                    break;
+                }
+            }
+
+            if ( $valid ) {
+                return $head;
+            }
+        }
+
+        return null;
+    }
 }
-

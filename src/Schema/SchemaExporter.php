@@ -6,172 +6,184 @@ use MediaWiki\Extension\StructureSync\Store\WikiCategoryStore;
 use MediaWiki\Extension\StructureSync\Store\WikiPropertyStore;
 
 /**
- * Exports the current wiki ontology to a schema array
+ * SchemaExporter
+ * --------------
+ * Converts the current wiki ontology into a structured schema array.
+ *
+ * IMPORTANT:
+ *   - By default, exportToArray() exports the raw schema (no inheritance expansion).
+ *   - Inherited expansion is only optional and intended ONLY for generation/debugging.
+ *
+ * Output is deterministic and suitable for comparison/diffing.
  */
 class SchemaExporter {
 
-	/** @var WikiCategoryStore */
-	private $categoryStore;
+    /** @var WikiCategoryStore */
+    private $categoryStore;
 
-	/** @var WikiPropertyStore */
-	private $propertyStore;
+    /** @var WikiPropertyStore */
+    private $propertyStore;
 
-	/** @var InheritanceResolver|null */
-	private $inheritanceResolver;
+    /** @var InheritanceResolver|null */
+    private $inheritanceResolver;
 
-	/**
-	 * @param WikiCategoryStore|null $categoryStore
-	 * @param WikiPropertyStore|null $propertyStore
-	 */
-	public function __construct(
-		WikiCategoryStore $categoryStore = null,
-		WikiPropertyStore $propertyStore = null
-	) {
-		$this->categoryStore = $categoryStore ?? new WikiCategoryStore();
-		$this->propertyStore = $propertyStore ?? new WikiPropertyStore();
-	}
+    /** @var string */
+    private const SCHEMA_VERSION = '1.0';
 
-	/**
-	 * Export the current wiki state to a schema array
-	 *
-	 * @param bool $includeInherited Whether to compute and include inherited properties
-	 * @return array Schema array
-	 */
-	public function exportToArray( bool $includeInherited = false ): array {
-		$categories = $this->categoryStore->getAllCategories();
-		$properties = $this->propertyStore->getAllProperties();
+    public function __construct(
+        WikiCategoryStore $categoryStore = null,
+        WikiPropertyStore $propertyStore = null,
+        InheritanceResolver $inheritanceResolver = null
+    ) {
+        $this->categoryStore = $categoryStore ?? new WikiCategoryStore();
+        $this->propertyStore = $propertyStore ?? new WikiPropertyStore();
+        $this->inheritanceResolver = $inheritanceResolver; // Optional injection
+    }
 
-		// Build schema structure
-		$schema = [
-			'schemaVersion' => '1.0',
-			'categories' => [],
-			'properties' => [],
-		];
+    /**
+     * Export the wiki ontology to an array structure.
+     *
+     * @param bool $includeInherited  If true, expand inherited properties.
+     * @return array
+     */
+    public function exportToArray( bool $includeInherited = false ): array {
+        $categories = $this->categoryStore->getAllCategories();
+        $properties = $this->propertyStore->getAllProperties();
 
-		// If including inherited properties, use InheritanceResolver
-		if ( $includeInherited && !empty( $categories ) ) {
-			$this->inheritanceResolver = new InheritanceResolver( $categories );
+        // Stabilize key ordering for deterministic diffs
+        ksort( $categories );
+        ksort( $properties );
 
-			foreach ( $categories as $categoryName => $category ) {
-				try {
-					// Get effective category with inherited properties
-					$effectiveCategory = $this->inheritanceResolver->getEffectiveCategory( $categoryName );
-					$schema['categories'][$categoryName] = $effectiveCategory->toArray();
-				} catch ( \RuntimeException $e ) {
-					// Log error but continue with non-inherited version
-					wfLogWarning( "StructureSync: Error resolving inheritance for $categoryName: " . $e->getMessage() );
-					$schema['categories'][$categoryName] = $category->toArray();
-				}
-			}
-		} else {
-			// Export without inheritance resolution
-			foreach ( $categories as $categoryName => $category ) {
-				$schema['categories'][$categoryName] = $category->toArray();
-			}
-		}
+        $schema = [
+            'schemaVersion' => self::SCHEMA_VERSION,
+            'categories'    => [],
+            'properties'    => [],
+        ];
 
-		// Export properties
-		foreach ( $properties as $propertyName => $property ) {
-			$schema['properties'][$propertyName] = $property->toArray();
-		}
+        // -------------------------------------------------------------
+        // CATEGORY EXPORT
+        // -------------------------------------------------------------
+        if ( $includeInherited && !empty( $categories ) ) {
+            $resolver = $this->inheritanceResolver ?? new InheritanceResolver( $categories );
 
-		return $schema;
-	}
+            foreach ( $categories as $name => $category ) {
+                try {
+                    $effective = $resolver->getEffectiveCategory( $name );
+                    $schema['categories'][$name] = $effective->toArray();
+                } catch ( \RuntimeException $e ) {
+                    wfLogWarning(
+                        "StructureSync: Inheritance resolution failed for $name: " . $e->getMessage()
+                    );
+                    $schema['categories'][$name] = $category->toArray();
+                }
+            }
+        }
+        else {
+            foreach ( $categories as $name => $category ) {
+                $schema['categories'][$name] = $category->toArray();
+            }
+        }
 
-	/**
-	 * Export specific categories to schema array
-	 *
-	 * @param string[] $categoryNames
-	 * @return array Schema array
-	 */
-	public function exportCategories( array $categoryNames ): array {
-		$schema = [
-			'schemaVersion' => '1.0',
-			'categories' => [],
-			'properties' => [],
-		];
+        // -------------------------------------------------------------
+        // PROPERTY EXPORT
+        // -------------------------------------------------------------
+        foreach ( $properties as $name => $property ) {
+            $schema['properties'][$name] = $property->toArray();
+        }
 
-		$usedProperties = [];
+        return $schema;
+    }
 
-		foreach ( $categoryNames as $categoryName ) {
-			$category = $this->categoryStore->readCategory( $categoryName );
-			if ( $category === null ) {
-				continue;
-			}
+    /**
+     * Export only a subset of categories (and the properties they use).
+     *
+     * @param string[] $categoryNames
+     * @return array
+     */
+    public function exportCategories( array $categoryNames ): array {
+        $schema = [
+            'schemaVersion' => self::SCHEMA_VERSION,
+            'categories'    => [],
+            'properties'    => [],
+        ];
 
-			$schema['categories'][$categoryName] = $category->toArray();
+        $usedProperties = [];
 
-			// Track which properties are used
-			$usedProperties = array_merge(
-				$usedProperties,
-				$category->getAllProperties()
-			);
-		}
+        foreach ( $categoryNames as $name ) {
+            $category = $this->categoryStore->readCategory( $name );
+            if ( !$category ) {
+                continue;
+            }
 
-		// Export only the properties used by these categories
-		$usedProperties = array_unique( $usedProperties );
-		foreach ( $usedProperties as $propertyName ) {
-			$property = $this->propertyStore->readProperty( $propertyName );
-			if ( $property !== null ) {
-				$schema['properties'][$propertyName] = $property->toArray();
-			}
-		}
+            $schema['categories'][$name] = $category->toArray();
+            $usedProperties = array_merge(
+                $usedProperties,
+                $category->getAllProperties()
+            );
+        }
 
-		return $schema;
-	}
+        // Deduplicate + sort for stability
+        $usedProperties = array_unique( $usedProperties );
+        sort( $usedProperties );
 
-	/**
-	 * Get statistics about the current ontology
-	 *
-	 * @return array Statistics array
-	 */
-	public function getStatistics(): array {
-		$categories = $this->categoryStore->getAllCategories();
-		$properties = $this->propertyStore->getAllProperties();
+        foreach ( $usedProperties as $propertyName ) {
+            $property = $this->propertyStore->readProperty( $propertyName );
+            if ( $property ) {
+                $schema['properties'][$propertyName] = $property->toArray();
+            }
+        }
 
-		$stats = [
-			'categoryCount' => count( $categories ),
-			'propertyCount' => count( $properties ),
-			'categoriesWithParents' => 0,
-			'categoriesWithProperties' => 0,
-			'categoriesWithDisplay' => 0,
-			'categoriesWithForms' => 0,
-		];
+        return $schema;
+    }
 
-		foreach ( $categories as $category ) {
-			if ( !empty( $category->getParents() ) ) {
-				$stats['categoriesWithParents']++;
-			}
-			if ( !empty( $category->getAllProperties() ) ) {
-				$stats['categoriesWithProperties']++;
-			}
-			if ( !empty( $category->getDisplayConfig() ) ) {
-				$stats['categoriesWithDisplay']++;
-			}
-			if ( !empty( $category->getFormConfig() ) ) {
-				$stats['categoriesWithForms']++;
-			}
-		}
+    /**
+     * Gather statistics about current ontology.
+     *
+     * @return array
+     */
+    public function getStatistics(): array {
+        $categories = $this->categoryStore->getAllCategories();
+        $properties = $this->propertyStore->getAllProperties();
 
-		return $stats;
-	}
+        $stats = [
+            'categoryCount'            => count( $categories ),
+            'propertyCount'            => count( $properties ),
+            'categoriesWithParents'    => 0,
+            'categoriesWithProperties' => 0,
+            'categoriesWithDisplay'    => 0,
+            'categoriesWithForms'      => 0,
+        ];
 
-	/**
-	 * Validate the current wiki state
-	 *
-	 * @return array Array with 'errors' and 'warnings' keys
-	 */
-	public function validateWikiState(): array {
-		$schema = $this->exportToArray( false );
-		$validator = new SchemaValidator();
+        foreach ( $categories as $cat ) {
+            if ( $cat->getParents() ) {
+                $stats['categoriesWithParents']++;
+            }
+            if ( $cat->getAllProperties() ) {
+                $stats['categoriesWithProperties']++;
+            }
+            if ( $cat->getDisplayConfig() ) {
+                $stats['categoriesWithDisplay']++;
+            }
+            if ( $cat->getFormConfig() ) {
+                $stats['categoriesWithForms']++;
+            }
+        }
 
-		$errors = $validator->validateSchema( $schema );
-		$warnings = $validator->generateWarnings( $schema );
+        return $stats;
+    }
 
-		return [
-			'errors' => $errors,
-			'warnings' => $warnings,
-		];
-	}
+    /**
+     * Validate the current wiki ontology using SchemaValidator.
+     *
+     * @return array ['errors' => [...], 'warnings' => [...]]
+     */
+    public function validateWikiState(): array {
+        $schema = $this->exportToArray( false );
+        $validator = new SchemaValidator();
+
+        return [
+            'errors'   => $validator->validateSchema( $schema ),
+            'warnings' => $validator->generateWarnings( $schema ),
+        ];
+    }
 }
-

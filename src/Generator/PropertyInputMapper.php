@@ -5,112 +5,160 @@ namespace MediaWiki\Extension\StructureSync\Generator;
 use MediaWiki\Extension\StructureSync\Schema\PropertyModel;
 
 /**
- * Maps property datatypes to PageForms input types
+ * PropertyInputMapper
+ * --------------------
+ * Converts SMW property metadata into PageForms input definitions.
+ *
+ * Responsibilities:
+ *   - Map SMW datatype → PageForms input type
+ *   - Add PageForms parameters (values, size, ranges, etc.)
+ *   - Produce syntactically valid PF input strings
+ *   - Support required/optional fields based on CategoryModel requirements
  */
 class PropertyInputMapper {
 
-	/**
-	 * Get the PageForms input type for a property
-	 *
-	 * @param PropertyModel $property
-	 * @return string Input type for PageForms
-	 */
-	public function getInputType( PropertyModel $property ): string {
-		$datatype = $property->getDatatype();
+    /* =====================================================================
+     * PageForms INPUT TYPE RESOLUTION
+     * ===================================================================== */
 
-		// Map SMW datatypes to PageForms input types
-		$typeMap = [
-			'Text' => 'text',
-			'Page' => 'combobox',
-			'Date' => 'datepicker',
-			'Number' => 'text',
-			'Email' => 'text',
-			'URL' => 'text',
-			'Boolean' => 'checkbox',
-			'Code' => 'textarea',
-			'Geographic coordinate' => 'text',
-			'Quantity' => 'text',
-			'Temperature' => 'text',
-			'Telephone number' => 'text',
-		];
+    /**
+     * Determine PageForms input type for a given property.
+     *
+     * @param PropertyModel $property
+     * @return string
+     */
+    public function getInputType( PropertyModel $property ): string {
 
-		// Check for special cases
-		if ( $property->hasAllowedValues() ) {
-			return 'dropdown';
-		}
+        $datatype = $property->getDatatype();
 
-		if ( $property->isPageType() && $property->getRangeCategory() !== null ) {
-			return 'combobox';
-		}
+        // Hard mapping based on SMW datatypes
+        static $map = [
+            'Text'                  => 'text',
+            'URL'                   => 'text',
+            'Email'                 => 'text',
+            'Telephone number'      => 'text',
+            'Number'                => 'number',
+            'Quantity'              => 'text',  // Could convert to number later
+            'Temperature'           => 'number',
+            'Date'                  => 'datepicker',
+            'Boolean'               => 'checkbox',
+            'Code'                  => 'textarea',
+            'Geographic coordinate' => 'text',
+        ];
 
-		return $typeMap[$datatype] ?? 'text';
-	}
+        // Special cases override defaults
 
-	/**
-	 * Get additional parameters for the input type
-	 *
-	 * @param PropertyModel $property
-	 * @return array
-	 */
-	public function getInputParameters( PropertyModel $property ): array {
-		$params = [];
+        // Dropdown enum
+        if ( $property->hasAllowedValues() ) {
+            return 'dropdown';
+        }
 
-		// Size for text inputs
-		$datatype = $property->getDatatype();
-		if ( in_array( $datatype, [ 'Text', 'Email', 'URL' ] ) ) {
-			$params['size'] = '50';
-		}
+        // Page-type reference (lookup/autocomplete)
+        if ( $property->isPageType() ) {
 
-		// Rows/cols for textarea
-		if ( $datatype === 'Code' ) {
-			$params['rows'] = '10';
-			$params['cols'] = '80';
-		}
+            // If restricted to a category (range), use "combobox"
+            if ( $property->getRangeCategory() !== null ) {
+                return 'combobox';
+            }
 
-		// Values for dropdown
-		if ( $property->hasAllowedValues() ) {
-			$params['values'] = implode( ',', $property->getAllowedValues() );
-		}
+            // Else, still a Page → PageForms combobox
+            return 'combobox';
+        }
 
-		// Category for combobox (Page type with range)
-		if ( $property->isPageType() && $property->getRangeCategory() !== null ) {
-			$params['values from category'] = $property->getRangeCategory();
-		}
+        // Fallback
+        return $map[$datatype] ?? 'text';
+    }
 
-		// Mandatory indicator
-		$params['mandatory'] = 'false'; // Will be set per-category in form generation
+    /* =====================================================================
+     * ADDITIONAL INPUT PARAMETERS
+     * ===================================================================== */
 
-		return $params;
-	}
+    /**
+     * Return PageForms input parameters for the property (except mandatory).
+     *
+     * @param PropertyModel $property
+     * @return array<string,string>
+     */
+    public function getInputParameters( PropertyModel $property ): array {
 
-	/**
-	 * Generate input definition for PageForms
-	 *
-	 * @param PropertyModel $property
-	 * @param bool $isMandatory
-	 * @return string
-	 */
-	public function generateInputDefinition( PropertyModel $property, bool $isMandatory = false ): string {
-		$inputType = $this->getInputType( $property );
-		$params = $this->getInputParameters( $property );
+        $params = [];
+        $datatype = $property->getDatatype();
 
-		// Override mandatory parameter
-		if ( $isMandatory ) {
-			$params['mandatory'] = 'true';
-		}
+        /* ------------------------------------------------------------------
+         * TEXT-LIKE FIELDS
+         * ------------------------------------------------------------------ */
+        if ( in_array( $datatype, [ 'Text', 'Email', 'URL', 'Telephone number' ] ) ) {
+            $params['size'] = '60';
+        }
 
-		// Build parameter string
-		$paramParts = [];
-		foreach ( $params as $key => $value ) {
-			$paramParts[] = "$key=$value";
-		}
+        /* ------------------------------------------------------------------
+         * TEXTAREA (code blocks)
+         * ------------------------------------------------------------------ */
+        if ( $datatype === 'Code' ) {
+            $params['rows'] = '10';
+            $params['cols'] = '80';
+        }
 
-		$paramString = '';
-		if ( !empty( $paramParts ) ) {
-			$paramString = '|' . implode( '|', $paramParts );
-		}
+        /* ------------------------------------------------------------------
+         * ENUMERATED VALUES
+         * ------------------------------------------------------------------ */
+        if ( $property->hasAllowedValues() ) {
+            // PageForms expects comma-separated list with NO SPACES
+            $params['values'] = implode( ',', array_map( 'trim', $property->getAllowedValues() ) );
+        }
 
-		return "input type=$inputType$paramString";
-	}
+        /* ------------------------------------------------------------------
+         * PAGE / COMBOBOX LOOKUPS
+         * ------------------------------------------------------------------ */
+        if ( $property->isPageType() && $property->getRangeCategory() !== null ) {
+            $params['values from category'] = $property->getRangeCategory();
+            $params['autocomplete'] = 'on';
+        }
+
+        /* ------------------------------------------------------------------
+         * BOOLEAN OVERRIDES
+         * ------------------------------------------------------------------ */
+        if ( $datatype === 'Boolean' ) {
+            // No additional params needed; PF checkbox is simple
+        }
+
+        /* ------------------------------------------------------------------
+         * DEFAULT: PF mandatory will be set in generateInputDefinition()
+         * ------------------------------------------------------------------ */
+        $params['mandatory'] = 'false';
+
+        return $params;
+    }
+
+    /* =====================================================================
+     * GENERATE INPUT STRING
+     * ===================================================================== */
+
+    /**
+     * Build the PageForms input definition string.
+     *
+     * @param PropertyModel $property
+     * @param bool $isMandatory Whether the category requires this property
+     * @return string PageForms input definition
+     */
+    public function generateInputDefinition( PropertyModel $property, bool $isMandatory = false ): string {
+
+        $inputType = $this->getInputType( $property );
+        $params = $this->getInputParameters( $property );
+
+        // Override mandatory flag
+        $params['mandatory'] = $isMandatory ? 'true' : 'false';
+
+        // Build "key=value" segments
+        $paramText = '';
+        foreach ( $params as $key => $value ) {
+            // Avoid empty or null parameters
+            if ( $value === '' || $value === null ) {
+                continue;
+            }
+            $paramText .= "|$key=$value";
+        }
+
+        return "input type=$inputType$paramText";
+    }
 }
-

@@ -23,6 +23,8 @@
 	"structuresync-export-format-yaml": "YAML format option",
 	"structuresync-export-button": "Button text to generate schema",
 	"structuresync-export-download": "Link text to download schema",
+	"structuresync-export-schema-preview": "Header text for schema preview section",
+	"structuresync-export-copy": "Button text to copy schema to clipboard",
 	"structuresync-import-title": "Title for the import section",
 	"structuresync-import-description": "Description of the import functionality",
 	"structuresync-import-file": "Label for file upload field",

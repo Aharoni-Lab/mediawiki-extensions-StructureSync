@@ -2,12 +2,14 @@
 
 namespace MediaWiki\Extension\StructureSync\Store;
 
+use MediaWiki\Content\TextContent;
 use MediaWiki\MediaWikiServices;
+use MediaWiki\Page\WikiPageFactory;
 use MediaWiki\Revision\SlotRecord;
-use Title;
+use MediaWiki\Title\Title;
 use WikiPage;
-use CommentStoreComment;
-use User;
+use MediaWiki\CommentStore\CommentStoreComment;
+use MediaWiki\User\User;
 
 /**
  * Helper class for creating and updating wiki pages
@@ -39,7 +41,8 @@ class PageCreator {
 	 */
 	public function createOrUpdatePage( Title $title, string $content, string $summary, int $flags = 0 ): bool {
 		try {
-			$wikiPage = WikiPage::factory( $title );
+			$wikiPageFactory = MediaWikiServices::getInstance()->getWikiPageFactory();
+			$wikiPage = $wikiPageFactory->newFromTitle( $title );
 
 			$pageUpdater = $wikiPage->newPageUpdater( $this->user );
 
@@ -81,14 +84,20 @@ class PageCreator {
 			return null;
 		}
 
-		$wikiPage = WikiPage::factory( $title );
+		$wikiPageFactory = MediaWikiServices::getInstance()->getWikiPageFactory();
+		$wikiPage = $wikiPageFactory->newFromTitle( $title );
 		$content = $wikiPage->getContent();
 
 		if ( $content === null ) {
 			return null;
 		}
 
-		return $content->getText();
+		// Get text from TextContent, otherwise serialize
+		if ( $content instanceof TextContent ) {
+			return $content->getText();
+		}
+
+		return $content->serialize();
 	}
 
 	/**
@@ -120,7 +129,8 @@ class PageCreator {
 		}
 
 		try {
-			$wikiPage = WikiPage::factory( $title );
+			$wikiPageFactory = MediaWikiServices::getInstance()->getWikiPageFactory();
+			$wikiPage = $wikiPageFactory->newFromTitle( $title );
 			$error = '';
 			$status = $wikiPage->doDeleteArticleReal( $reason, $this->user, false, null, $error );
 

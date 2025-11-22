@@ -3,7 +3,8 @@
 set -euo pipefail
 
 #
-# StructureSync — Populate test data script
+# StructureSync — Populate comprehensive test data script
+# This script creates a diverse set of test data for manual testing of StructureSync
 #
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -30,67 +31,142 @@ fi
 
 cd "$MW_DIR"
 
+# Helper function to create a property
+create_property() {
+    local name="$1"
+    local description="$2"
+    local type="$3"
+    local extra="$4"  # Additional annotations (optional)
+    
+    docker compose exec -T mediawiki bash -c "php maintenance/edit.php -b 'Property:$name' <<'PROPEOF'
+$description
+[[Has type::$type]]
+$extra
+[[Category:Properties]]
+PROPEOF
+"
+}
+
+# Helper function to create a category
+create_category() {
+    local name="$1"
+    local content="$2"
+    
+    docker compose exec -T mediawiki bash -c "php maintenance/edit.php -b 'Category:$name' <<'CATEOF'
+$content
+CATEOF
+"
+}
+
+echo "=========================================="
+echo "Creating comprehensive test data for StructureSync"
+echo "=========================================="
+echo ""
+
 echo "==> Creating test properties..."
 
-# Basic properties
-docker compose exec -T mediawiki bash -c "php maintenance/edit.php -b 'Property:Has_full_name' <<'EOF'
-The full name of a person.
-[[Has type::Text]]
-[[Category:Properties]]
-EOF
-"
+# ==========================================
+# Property Type 1: Text Properties
+# ==========================================
+echo "  - Text properties..."
+create_property "Has_full_name" "The full name of a person." "Text" ""
+create_property "Has_biography" "Biography or description text." "Text" ""
+create_property "Has_research_interests" "Research interests and expertise areas." "Text" ""
+create_property "Has_office_location" "Office or workspace location." "Text" ""
 
-docker compose exec -T mediawiki bash -c "php maintenance/edit.php -b 'Property:Has_email' <<'EOF'
-Email address.
-[[Has type::Email]]
-[[Category:Properties]]
-EOF
-"
+# ==========================================
+# Property Type 2: Contact Information
+# ==========================================
+echo "  - Contact information properties..."
+create_property "Has_email" "Email address." "Email" ""
+create_property "Has_phone" "Phone number." "Telephone number" ""
+create_property "Has_website" "Personal or lab website URL." "URL" ""
+create_property "Has_orcid" "ORCID identifier (e.g., 0000-0000-0000-0000)." "Text" ""
 
-docker compose exec -T mediawiki bash -c "php maintenance/edit.php -b 'Property:Has_phone' <<'EOF'
-Phone number.
-[[Has type::Telephone number]]
-[[Category:Properties]]
-EOF
-"
+# ==========================================
+# Property Type 3: Date/Time Properties
+# ==========================================
+echo "  - Date/time properties..."
+create_property "Has_birth_date" "Date of birth." "Date" ""
+create_property "Has_start_date" "Start date (employment, enrollment, etc.)." "Date" ""
+create_property "Has_end_date" "End date (graduation, departure, etc.)." "Date" ""
+create_property "Has_publication_date" "Date of publication." "Date" ""
 
-docker compose exec -T mediawiki bash -c "php maintenance/edit.php -b 'Property:Has_biography' <<'EOF'
-Biography text.
-[[Has type::Text]]
-[[Category:Properties]]
-EOF
-"
+# ==========================================
+# Property Type 4: Numeric Properties
+# ==========================================
+echo "  - Numeric properties..."
+create_property "Has_cohort_year" "Year of cohort or class." "Number" ""
+create_property "Has_publication_count" "Number of publications." "Number" ""
+create_property "Has_h_index" "H-index metric." "Number" ""
+create_property "Has_room_number" "Office or room number." "Number" ""
 
-docker compose exec -T mediawiki bash -c "php maintenance/edit.php -b 'Property:Has_advisor' <<'EOF'
-Academic advisor.
-[[Has type::Page]]
-[[Category:Properties]]
-EOF
-"
+# ==========================================
+# Property Type 5: Boolean Properties
+# ==========================================
+echo "  - Boolean properties..."
+create_property "Has_active_status" "Whether the person is currently active." "Boolean" ""
+create_property "Has_public_profile" "Whether profile is publicly visible." "Boolean" ""
 
-docker compose exec -T mediawiki bash -c "php maintenance/edit.php -b 'Property:Has_cohort_year' <<'EOF'
-Year of cohort.
-[[Has type::Number]]
-[[Category:Properties]]
-EOF
-"
+# ==========================================
+# Property Type 6: Page/Reference Properties
+# ==========================================
+echo "  - Page/reference properties..."
+create_property "Has_advisor" "Academic advisor or supervisor." "Page" ""
+create_property "Has_lab" "Lab or research group affiliation." "Page" ""
+create_property "Has_institution" "Institutional affiliation." "Page" ""
+create_property "Has_department" "Department affiliation." "Page" ""
+create_property "Has_collaborator" "Research collaborators." "Page" ""
 
-docker compose exec -T mediawiki bash -c "php maintenance/edit.php -b 'Property:Has_lab_role' <<'EOF'
-Role in the lab.
-[[Has type::Text]]
-[[Allows value::PI]]
+# ==========================================
+# Property Type 7: Properties with Allowed Values
+# ==========================================
+echo "  - Properties with allowed values..."
+create_property "Has_lab_role" "Role in the lab." "Text" "[[Allows value::PI]]
+[[Allows value::Lab Manager]]
 [[Allows value::Postdoc]]
 [[Allows value::Graduate Student]]
 [[Allows value::Undergraduate]]
-[[Category:Properties]]
-EOF
-"
+[[Allows value::Research Assistant]]
+[[Allows value::Visitor]]"
 
+create_property "Has_academic_level" "Academic level or degree status." "Text" "[[Allows value::Undergraduate]]
+[[Allows value::Masters]]
+[[Allows value::PhD]]
+[[Allows value::Postdoc]]
+[[Allows value::Faculty]]"
+
+create_property "Has_employment_status" "Employment or appointment status." "Text" "[[Allows value::Full-time]]
+[[Allows value::Part-time]]
+[[Allows value::Contract]]
+[[Allows value::Volunteer]]"
+
+# ==========================================
+# Property Type 8: Specialized Properties
+# ==========================================
+echo "  - Specialized properties..."
+create_property "Has_geographic_location" "Geographic coordinates (lat, lon)." "Geographic coordinate" ""
+create_property "Has_code_repository" "URL to code repository (GitHub, GitLab, etc.)." "URL" ""
+
+# ==========================================
+# Property Type 9: Academic/Research Properties
+# ==========================================
+echo "  - Academic/research properties..."
+create_property "Has_degree" "Academic degree obtained." "Text" ""
+create_property "Has_thesis_title" "Title of thesis or dissertation." "Text" ""
+create_property "Has_research_area" "Primary research area." "Text" ""
+create_property "Has_keywords" "Research keywords." "Text" ""
+
+echo ""
 echo "==> Creating test categories with schema..."
 
-# Base Person category
-docker compose exec -T mediawiki bash -c "php maintenance/edit.php -b 'Category:Person' <<'EOF'
-A person in our organization.
+# ==========================================
+# Base Categories (no parents)
+# ==========================================
+echo "  - Base categories..."
+
+# Base Person category (simple base category with basic schema)
+create_category "Person" "A person in our organization.
 
 <!-- StructureSync Schema Start -->
 === Required Properties ===
@@ -100,38 +176,182 @@ A person in our organization.
 === Optional Properties ===
 [[Has optional property::Property:Has phone]]
 [[Has optional property::Property:Has biography]]
+[[Has optional property::Property:Has website]]
+[[Has optional property::Property:Has birth date]]
 
 {{#subobject:display_section_0
 |Has display section name=Contact Information
 |Has display section property=Property:Has email
 |Has display section property=Property:Has phone
+|Has display section property=Property:Has website
 }}
 
 {{#subobject:display_section_1
 |Has display section name=Biography
 |Has display section property=Property:Has biography
 }}
-<!-- StructureSync Schema End -->
-EOF
-"
+<!-- StructureSync Schema End -->"
 
-# LabMember category
-docker compose exec -T mediawiki bash -c "php maintenance/edit.php -b 'Category:LabMember' <<'EOF'
-A member of the lab.
+# LabMember category (base category for lab members)
+create_category "LabMember" "A member of the lab.
 
 <!-- StructureSync Schema Start -->
 === Required Properties ===
 [[Has required property::Property:Has lab role]]
+[[Has required property::Property:Has start date]]
 
 === Optional Properties ===
 [[Has optional property::Property:Has biography]]
-<!-- StructureSync Schema End -->
-EOF
-"
+[[Has optional property::Property:Has end date]]
+[[Has optional property::Property:Has active status]]
+<!-- StructureSync Schema End -->"
 
-# GraduateStudent category (multiple inheritance example)
-docker compose exec -T mediawiki bash -c "php maintenance/edit.php -b 'Category:GraduateStudent' <<'EOF'
-A graduate student in the lab.
+# Organization category (base category, no parents)
+create_category "Organization" "An organization or institution.
+
+<!-- StructureSync Schema Start -->
+=== Required Properties ===
+[[Has required property::Property:Has full name]]
+
+=== Optional Properties ===
+[[Has optional property::Property:Has website]]
+[[Has optional property::Property:Has geographic location]]
+<!-- StructureSync Schema End -->"
+
+# Lab category (inherits from Organization)
+create_category "Lab" "A research lab or group.
+
+<!-- StructureSync Schema Start -->
+[[Has parent category::Category:Organization]]
+
+=== Required Properties ===
+[[Has required property::Property:Has lab]]
+
+=== Optional Properties ===
+[[Has optional property::Property:Has research area]]
+[[Has optional property::Property:Has code repository]]
+[[Has optional property::Property:Has website]]
+
+{{#subobject:display_section_0
+|Has display section name=Research
+|Has display section property=Property:Has research area
+}}
+<!-- StructureSync Schema End -->
+
+[[Category:Organization]]"
+
+# Publication category (standalone category)
+create_category "Publication" "A research publication.
+
+<!-- StructureSync Schema Start -->
+=== Required Properties ===
+[[Has required property::Property:Has full name]]
+[[Has required property::Property:Has publication date]]
+
+=== Optional Properties ===
+[[Has optional property::Property:Has keywords]]
+[[Has optional property::Property:Has website]]
+
+{{#subobject:display_section_0
+|Has display section name=Publication Details
+|Has display section property=Property:Has publication date
+|Has display section property=Property:Has keywords
+}}
+<!-- StructureSync Schema End -->"
+
+# Project category (base category)
+create_category "Project" "A research project.
+
+<!-- StructureSync Schema Start -->
+=== Required Properties ===
+[[Has required property::Property:Has full name]]
+
+=== Optional Properties ===
+[[Has optional property::Property:Has start date]]
+[[Has optional property::Property:Has end date]]
+[[Has optional property::Property:Has research area]]
+<!-- StructureSync Schema End -->"
+
+echo "  - Single inheritance hierarchies..."
+
+# Faculty category (inherits from Person only)
+create_category "Faculty" "Faculty member.
+
+<!-- StructureSync Schema Start -->
+[[Has parent category::Category:Person]]
+
+=== Required Properties ===
+[[Has required property::Property:Has department]]
+[[Has required property::Property:Has institution]]
+
+=== Optional Properties ===
+[[Has optional property::Property:Has research interests]]
+[[Has optional property::Property:Has publication count]]
+[[Has optional property::Property:Has h index]]
+[[Has optional property::Property:Has room number]]
+
+{{#subobject:display_section_0
+|Has display section name=Academic Information
+|Has display section property=Property:Has department
+|Has display section property=Property:Has institution
+|Has display section property=Property:Has room number
+}}
+
+{{#subobject:display_section_1
+|Has display section name=Research
+|Has display section property=Property:Has research interests
+|Has display section property=Property:Has publication count
+|Has display section property=Property:Has h index
+}}
+<!-- StructureSync Schema End -->
+
+[[Category:Person]]"
+
+# Student category (base for all students, inherits from Person)
+create_category "Student" "A student.
+
+<!-- StructureSync Schema Start -->
+[[Has parent category::Category:Person]]
+
+=== Required Properties ===
+[[Has required property::Property:Has advisor]]
+[[Has required property::Property:Has academic level]]
+
+=== Optional Properties ===
+[[Has optional property::Property:Has cohort year]]
+[[Has optional property::Property:Has degree]]
+
+{{#subobject:display_section_0
+|Has display section name=Academic Information
+|Has display section property=Property:Has advisor
+|Has display section property=Property:Has academic level
+|Has display section property=Property:Has cohort year
+}}
+<!-- StructureSync Schema End -->
+
+[[Category:Person]]"
+
+# Undergraduate category (inherits from Student, single inheritance chain)
+create_category "Undergraduate" "An undergraduate student.
+
+<!-- StructureSync Schema Start -->
+[[Has parent category::Category:Student]]
+
+=== Optional Properties ===
+[[Has optional property::Property:Has employment_status]]
+
+{{#subobject:display_section_0
+|Has display section name=Student Information
+|Has display section property=Property:Has employment_status
+}}
+<!-- StructureSync Schema End -->
+
+[[Category:Student]]"
+
+echo "  - Multiple inheritance hierarchies..."
+
+# GraduateStudent category (multiple inheritance: Person + LabMember)
+create_category "GraduateStudent" "A graduate student in the lab.
 
 <!-- StructureSync Schema Start -->
 [[Has parent category::Category:Person]]
@@ -139,49 +359,323 @@ A graduate student in the lab.
 
 === Required Properties ===
 [[Has required property::Property:Has advisor]]
+[[Has required property::Property:Has academic level]]
 
 === Optional Properties ===
 [[Has optional property::Property:Has cohort year]]
+[[Has optional property::Property:Has thesis title]]
+[[Has optional property::Property:Has research interests]]
+
+{{#subobject:display_section_0
+|Has display section name=Academic Information
+|Has display section property=Property:Has advisor
+|Has display section property=Property:Has academic level
+|Has display section property=Property:Has cohort year
+|Has display section property=Property:Has thesis title
+}}
+
+{{#subobject:display_section_1
+|Has display section name=Research
+|Has display section property=Property:Has research interests
+}}
 <!-- StructureSync Schema End -->
 
 [[Category:Person]]
-[[Category:LabMember]]
-EOF
-"
+[[Category:LabMember]]"
 
+# Postdoc category (multiple inheritance: Person + LabMember)
+create_category "Postdoc" "A postdoctoral researcher in the lab.
+
+<!-- StructureSync Schema Start -->
+[[Has parent category::Category:Person]]
+[[Has parent category::Category:LabMember]]
+
+=== Required Properties ===
+[[Has required property::Property:Has lab]]
+[[Has required property::Property:Has start date]]
+
+=== Optional Properties ===
+[[Has optional property::Property:Has research interests]]
+[[Has optional property::Property:Has publication count]]
+[[Has optional property::Property:Has end date]]
+
+{{#subobject:display_section_0
+|Has display section name=Research
+|Has display section property=Property:Has research interests
+|Has display section property=Property:Has publication count
+}}
+<!-- StructureSync Schema End -->
+
+[[Category:Person]]
+[[Category:LabMember]]"
+
+# PI category (Principal Investigator, inherits from Faculty + LabMember)
+create_category "PI" "A principal investigator (lab head).
+
+<!-- StructureSync Schema Start -->
+[[Has parent category::Category:Faculty]]
+[[Has parent category::Category:LabMember]]
+
+=== Required Properties ===
+[[Has required property::Property:Has lab]]
+
+=== Optional Properties ===
+[[Has optional property::Property:Has orcid]]
+
+{{#subobject:display_section_0
+|Has display section name=Lab Information
+|Has display section property=Property:Has lab
+}}
+<!-- StructureSync Schema End -->
+
+[[Category:Faculty]]
+[[Category:LabMember]]"
+
+echo "  - Deep hierarchy examples..."
+
+# PhDStudent category (deep inheritance: Person -> Student -> GraduateStudent + LabMember)
+create_category "PhDStudent" "A PhD student in the lab.
+
+<!-- StructureSync Schema Start -->
+[[Has parent category::Category:GraduateStudent]]
+
+=== Optional Properties ===
+[[Has optional property::Property:Has thesis title]]
+[[Has optional property::Property:Has degree]]
+
+{{#subobject:display_section_0
+|Has display section name=PhD Information
+|Has display section property=Property:Has thesis title
+|Has display section property=Property:Has degree
+}}
+<!-- StructureSync Schema End -->
+
+[[Category:GraduateStudent]]"
+
+# MastersStudent category (deep inheritance: Person -> Student -> GraduateStudent)
+create_category "MastersStudent" "A masters student.
+
+<!-- StructureSync Schema Start -->
+[[Has parent category::Category:GraduateStudent]]
+
+=== Optional Properties ===
+[[Has optional property::Property:Has thesis title]]
+
+{{#subobject:display_section_0
+|Has display section name=Masters Information
+|Has display section property=Property:Has thesis title
+}}
+<!-- StructureSync Schema End -->
+
+[[Category:GraduateStudent]]"
+
+echo "  - Edge case categories..."
+
+# EmptyCategory (category with no properties defined)
+create_category "EmptyCategory" "A category with no properties (for testing).
+
+<!-- StructureSync Schema Start -->
+<!-- StructureSync Schema End -->"
+
+# SimpleCategory (category with minimal schema)
+create_category "SimpleCategory" "A simple category for testing.
+
+<!-- StructureSync Schema Start -->
+=== Required Properties ===
+[[Has required property::Property:Has full name]]
+<!-- StructureSync Schema End -->"
+
+echo ""
 echo "==> Generating templates and forms..."
 docker compose exec -T mediawiki php extensions/StructureSync/maintenance/regenerateArtifacts.php --generate-display
 
+echo ""
 echo "==> Creating example pages..."
 
-# Example person
-docker compose exec -T mediawiki bash -c "php maintenance/edit.php -b 'John_Doe' <<'EOF'
-{{Person
+# Helper function to create an example page
+create_page() {
+    local name="$1"
+    local content="$2"
+    
+    docker compose exec -T mediawiki bash -c "php maintenance/edit.php -b '$name' <<'PAGEOF'
+$content
+PAGEOF
+"
+}
+
+echo "  - Base category examples..."
+
+# Example Person
+create_page "John_Doe" "{{Person
 |full_name=John Doe
 |email=john.doe@example.edu
 |phone=555-0100
 |biography=John is a researcher with expertise in computational biology.
+|website=https://johndoe.example.edu
+|birth_date=1975-05-15
 }}
 
-[[Category:Person]]
-EOF
-"
+[[Category:Person]]"
 
-# Example graduate student
-docker compose exec -T mediawiki bash -c "php maintenance/edit.php -b 'Jane_Smith' <<'EOF'
-{{GraduateStudent
+# Example Faculty
+create_page "Dr_Alice_Johnson" "{{Faculty
+|full_name=Dr. Alice Johnson
+|email=alice.johnson@example.edu
+|phone=555-0200
+|department=Biology
+|institution=Example University
+|room_number=301
+|research_interests=Computational biology, Systems biology, Machine learning
+|publication_count=47
+|h_index=23
+|biography=Alice Johnson is a professor specializing in computational biology and systems biology.
+}}
+
+[[Category:Faculty]]"
+
+# Example Lab
+create_page "Johnson_Lab" "{{Lab
+|full_name=Johnson Computational Biology Lab
+|website=https://jlab.example.edu
+|research_area=Computational Biology, Systems Biology, Bioinformatics
+|code_repository=https://github.com/johnsonlab
+}}
+
+[[Category:Lab]]"
+
+echo "  - Single inheritance examples..."
+
+# Example Undergraduate
+create_page "Bob_Williams" "{{Undergraduate
+|full_name=Bob Williams
+|email=bob.williams@example.edu
+|advisor=Dr. Alice Johnson
+|academic_level=Undergraduate
+|cohort_year=2024
+|employment_status=Part-time
+|biography=Bob is an undergraduate student working on bioinformatics projects.
+}}
+
+[[Category:Undergraduate]]"
+
+echo "  - Multiple inheritance examples..."
+
+# Example Graduate Student (Person + LabMember)
+create_page "Jane_Smith" "{{GraduateStudent
 |full_name=Jane Smith
 |email=jane.smith@example.edu
 |phone=555-0101
-|advisor=John Doe
+|advisor=Dr. Alice Johnson
 |cohort_year=2023
 |lab_role=Graduate Student
+|academic_level=PhD
+|thesis_title=Machine Learning Approaches to Protein Structure Prediction
+|research_interests=Machine learning, Protein folding, Deep learning
+|biography=Jane is a PhD student in the Johnson lab working on protein structure prediction.
 }}
 
-[[Category:GraduateStudent]]
-EOF
-"
+[[Category:GraduateStudent]]"
 
+# Example Postdoc (Person + LabMember)
+create_page "Dr_Carlos_Rodriguez" "{{Postdoc
+|full_name=Dr. Carlos Rodriguez
+|email=carlos.rodriguez@example.edu
+|phone=555-0300
+|lab_role=Postdoc
+|lab=Johnson Lab
+|start_date=2022-09-01
+|research_interests=Systems biology, Network analysis
+|publication_count=15
+|biography=Carlos is a postdoctoral researcher working on network biology approaches.
+|website=https://carlos.example.edu
+}}
+
+[[Category:Postdoc]]"
+
+# Example PI (Faculty + LabMember)
+create_page "Dr_Alice_Johnson_PI" "{{PI
+|full_name=Dr. Alice Johnson
+|email=alice.johnson@example.edu
+|phone=555-0200
+|department=Biology
+|institution=Example University
+|room_number=301
+|lab_role=PI
+|lab=Johnson Lab
+|research_interests=Computational biology, Systems biology
+|publication_count=47
+|h_index=23
+|orcid=0000-0000-0000-0001
+|biography=Alice Johnson leads the Johnson Computational Biology Lab.
+}}
+
+[[Category:PI]]"
+
+echo "  - Deep hierarchy examples..."
+
+# Example PhD Student (deep inheritance)
+create_page "David_Chen" "{{PhDStudent
+|full_name=David Chen
+|email=david.chen@example.edu
+|phone=555-0400
+|advisor=Dr. Alice Johnson
+|academic_level=PhD
+|cohort_year=2021
+|lab_role=Graduate Student
+|thesis_title=Deep Learning for Biological Sequence Analysis
+|degree=PhD in Computational Biology
+|research_interests=Deep learning, Sequence analysis, Natural language processing for biology
+|biography=David is a PhD student working on applying deep learning to biological sequences.
+}}
+
+[[Category:PhDStudent]]"
+
+# Example Masters Student (deep inheritance)
+create_page "Emma_Wilson" "{{MastersStudent
+|full_name=Emma Wilson
+|email=emma.wilson@example.edu
+|advisor=Dr. Alice Johnson
+|academic_level=Masters
+|cohort_year=2024
+|lab_role=Graduate Student
+|thesis_title=Network Analysis of Protein-Protein Interactions
+|research_interests=Network biology, Graph theory
+|biography=Emma is a masters student working on network biology projects.
+}}
+
+[[Category:MastersStudent]]"
+
+echo "  - Organization examples..."
+
+# Example Organization
+create_page "Example_University" "{{Organization
+|full_name=Example University
+|website=https://www.example.edu
+|geographic_location=40.7128;-74.0060
+}}
+
+[[Category:Organization]]"
+
+# Example Publication
+create_page "Recent_Publication_2024" "{{Publication
+|full_name=Machine Learning Approaches to Protein Folding
+|publication_date=2024-01-15
+|keywords=machine learning,protein folding,deep learning,bioinformatics
+|website=https://example.edu/publications/ml-protein-folding
+}}
+
+[[Category:Publication]]"
+
+# Example Project
+create_page "Protein_Folding_Project" "{{Project
+|full_name=Deep Learning for Protein Folding Prediction
+|start_date=2023-01-01
+|research_area=Protein folding, Machine learning
+}}
+
+[[Category:Project]]"
+
+echo ""
 echo "==> Exporting test schema..."
 docker compose exec -T mediawiki php extensions/StructureSync/maintenance/exportOntology.php \
     --format=json \
@@ -193,15 +687,117 @@ echo "Test data populated successfully!"
 echo "========================================"
 echo ""
 echo "Created:"
-echo "  - 7 Properties (Has full name, Has email, etc.)"
-echo "  - 3 Categories (Person, LabMember, GraduateStudent)"
-echo "  - Templates and Forms for all categories"
-echo "  - 2 Example pages (John Doe, Jane Smith)"
+echo ""
+echo "PROPERTIES (30+):"
+echo "  - Text: Has full name, Has biography, Has research interests, Has office location"
+echo "  - Contact: Has email, Has phone, Has website, Has orcid"
+echo "  - Date/Time: Has birth date, Has start date, Has end date, Has publication date"
+echo "  - Numeric: Has cohort year, Has publication count, Has h index, Has room number"
+echo "  - Boolean: Has active status, Has public profile"
+echo "  - Page/Reference: Has advisor, Has lab, Has institution, Has department, Has collaborator"
+echo "  - With Allowed Values: Has lab role, Has academic level, Has employment status"
+echo "  - Specialized: Has geographic location, Has code repository"
+echo "  - Academic: Has degree, Has thesis title, Has research area, Has keywords"
+echo ""
+echo "CATEGORIES (15+):"
+echo "  Base Categories (no parents):"
+echo "    - Person (with display sections)"
+echo "    - Organization, Lab, Publication, Project"
+echo "    - LabMember"
+echo "  Single Inheritance:"
+echo "    - Faculty (Person -> Faculty)"
+echo "    - Student (Person -> Student)"
+echo "    - Undergraduate (Person -> Student -> Undergraduate)"
+echo "  Multiple Inheritance:"
+echo "    - GraduateStudent (Person + LabMember)"
+echo "    - Postdoc (Person + LabMember)"
+echo "    - PI (Faculty + LabMember)"
+echo "  Deep Hierarchies:"
+echo "    - PhDStudent (Person -> Student -> GraduateStudent + LabMember -> PhDStudent)"
+echo "    - MastersStudent (Person -> Student -> GraduateStudent -> MastersStudent)"
+echo "  Edge Cases:"
+echo "    - EmptyCategory (no properties)"
+echo "    - SimpleCategory (minimal schema)"
+echo ""
+echo "EXAMPLE PAGES (10+):"
+echo "  - John_Doe (Person)"
+echo "  - Dr_Alice_Johnson (Faculty)"
+echo "  - Johnson_Lab (Lab)"
+echo "  - Bob_Williams (Undergraduate)"
+echo "  - Jane_Smith (GraduateStudent)"
+echo "  - Dr_Carlos_Rodriguez (Postdoc)"
+echo "  - Dr_Alice_Johnson_PI (PI)"
+echo "  - David_Chen (PhDStudent)"
+echo "  - Emma_Wilson (MastersStudent)"
+echo "  - Example_University (Organization)"
+echo "  - Recent_Publication_2024 (Publication)"
+echo "  - Protein_Folding_Project (Project)"
+echo ""
+echo "ARTIFACTS:"
+echo "  - Templates and Forms generated for all categories"
 echo "  - Exported schema to tests/test-schema.json"
 echo ""
-echo "Try these:"
-echo "  - Visit Special:StructureSync to see the overview"
-echo "  - View John_Doe page to see template rendering"
-echo "  - Use Form:GraduateStudent to create new graduate students"
-echo "  - Export schema via Special:StructureSync/export"
+echo "========================================"
+echo "TESTING SCENARIOS"
+echo "========================================"
+echo ""
+echo "1. OVERVIEW & EXPORT:"
+echo "   - Visit Special:StructureSync to see the overview"
+echo "   - Check category hierarchy and property inheritance"
+echo "   - Export schema via Special:StructureSync/export"
+echo ""
+echo "2. SINGLE INHERITANCE:"
+echo "   - View Faculty category (Person -> Faculty)"
+echo "   - Check that Faculty inherits Person properties"
+echo "   - View Dr_Alice_Johnson page"
+echo ""
+echo "3. MULTIPLE INHERITANCE:"
+echo "   - View GraduateStudent category (Person + LabMember)"
+echo "   - Verify it inherits properties from both parents"
+echo "   - View Jane_Smith page"
+echo "   - Test PI category (Faculty + LabMember)"
+echo ""
+echo "4. DEEP HIERARCHIES:"
+echo "   - View PhDStudent category (4-level inheritance)"
+echo "   - Verify property inheritance across levels"
+echo "   - View David_Chen page"
+echo ""
+echo "5. PROPERTY TYPES:"
+echo "   - Test different datatypes (Text, Email, Date, Number, Boolean, Page, URL)"
+echo "   - Test properties with allowed values (Has lab role)"
+echo "   - Test Page type properties with references"
+echo ""
+echo "6. DISPLAY SECTIONS:"
+echo "   - View Person category pages to see display sections"
+echo "   - Check that display templates are generated"
+echo ""
+echo "7. FORMS:"
+echo "   - Use Form:Person to create a new person"
+echo "   - Use Form:GraduateStudent to create a new graduate student"
+echo "   - Test form validation for required properties"
+echo ""
+echo "8. IMPORT/EXPORT:"
+echo "   - Export schema at Special:StructureSync/export"
+echo "   - Import exported schema at Special:StructureSync/import"
+echo "   - Verify schema round-trip"
+echo ""
+echo "9. VALIDATION:"
+echo "   - Run validation at Special:StructureSync/validate"
+echo "   - Check for missing templates, forms, or inconsistencies"
+echo ""
+echo "10. DIFF:"
+echo "    - Use Special:StructureSync/diff to compare schemas"
+echo "    - Test with modified schema files"
+echo ""
+echo "11. EDGE CASES:"
+echo "    - View EmptyCategory (no properties)"
+echo "    - View SimpleCategory (minimal schema)"
+echo "    - Test categories with many properties (Faculty)"
+echo ""
+echo "12. GENERATE:"
+echo "    - Use Special:StructureSync/generate to regenerate artifacts"
+echo "    - Test category-specific generation"
+echo ""
+echo "========================================"
+echo ""
 

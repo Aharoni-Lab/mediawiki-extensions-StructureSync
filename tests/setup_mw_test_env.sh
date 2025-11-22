@@ -23,7 +23,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 CACHE_BASE="$(get_cache_dir)"
 MW_DIR="${MW_DIR:-$CACHE_BASE/mediawiki-StructureSync-test}"
 EXT_DIR="${EXT_DIR:-$SCRIPT_DIR/..}"
-MW_BRANCH=REL1_39
+MW_BRANCH=REL1_44
 MW_PORT=8889
 MW_ADMIN_USER=Admin
 MW_ADMIN_PASS=dockerpass
@@ -51,7 +51,7 @@ fi
 cd "$MW_DIR"
 
 git fetch --all
-git checkout "$MW_BRANCH"
+git checkout -f "$MW_BRANCH" || git checkout -f "origin/$MW_BRANCH"
 git reset --hard "$MW_BRANCH"
 git clean -fdx
 git submodule update --init --recursive || true
@@ -71,16 +71,25 @@ EOF
 echo "==> Starting MW containers..."
 docker compose up -d
 
-echo "==> Installing composer deps (core only)..."
-docker compose exec -T mediawiki composer update --no-interaction --no-progress
+# ---------------- CLEAN vendor BEFORE composer install ----------------
+
+echo "==> Cleaning vendor + composer.lock inside container..."
+docker compose exec -T mediawiki bash -lc "
+  cd $CONTAINER_WIKI
+  rm -rf vendor composer.lock
+"
+
+echo "==> Installing MediaWiki core composer dependencies..."
+docker compose exec -T mediawiki composer install \
+    --no-dev --no-interaction --no-progress
 
 echo "==> Running MediaWiki install script..."
-# IMPORTANT: LocalSettings.php must *not* reference extensions yet
 docker compose exec -T mediawiki bash -lc "rm -f $CONTAINER_WIKI/LocalSettings.php"
 docker compose exec -T mediawiki /bin/bash /docker/install.sh
 
 echo "==> Fixing SQLite permissions..."
-docker compose exec -T mediawiki bash -lc "chmod -R o+rwx $CONTAINER_WIKI/cache/sqlite"
+docker compose exec -T mediawiki bash -lc \
+    "chmod -R o+rwx $CONTAINER_WIKI/cache/sqlite"
 
 # ---------------- EXTENSION & LOG MOUNTS ----------------
 
@@ -107,7 +116,7 @@ docker compose up -d
 echo "==> Installing SMW via composer..."
 docker compose exec -T mediawiki bash -lc "
   cd $CONTAINER_WIKI
-  composer require mediawiki/semantic-media-wiki:'~4.0' --no-progress
+  composer require mediawiki/semantic-media-wiki:'~6.0' --no-progress
 "
 
 echo "==> Enabling SMW..."
@@ -127,12 +136,19 @@ docker compose exec -T mediawiki php maintenance/update.php --quick
 echo "==> Initializing SMW store..."
 docker compose exec -T mediawiki php extensions/SemanticMediaWiki/maintenance/setupStore.php --nochecks
 
-# ---------------- INSTALL PAGE FORMS ----------------
+# ---------------- INSTALL PAGEFORMS ----------------
 
-echo "==> Installing PageForms via composer..."
+echo "==> Installing PageForms..."
 docker compose exec -T mediawiki bash -lc "
-  cd $CONTAINER_WIKI
-  composer require mediawiki/page-forms:'~5.7' --no-progress
+  cd $CONTAINER_WIKI/extensions
+  if [ ! -d PageForms ]; then
+    git clone https://gerrit.wikimedia.org/r/mediawiki/extensions/PageForms.git PageForms
+  fi
+  cd PageForms
+  git fetch --all
+  git checkout REL1_44 || git checkout master
+  git submodule update --init --recursive || true
+  composer install --no-dev --no-progress || true
 "
 
 echo "==> Enabling PageForms..."
@@ -148,18 +164,42 @@ docker compose exec -T mediawiki bash -lc "
 echo "==> Running MW updater for PageForms..."
 docker compose exec -T mediawiki php maintenance/update.php --quick
 
-# ---------------- STRUCTURE SYNC ----------------
+# ---------------- STRUCTURESYNCH ----------------
 
-echo "==> Installing StructureSync dependencies..."
+echo "==> Verifying StructureSync extension directory..."
 docker compose exec -T mediawiki bash -lc "
-  cd $CONTAINER_WIKI/extensions/StructureSync
-  composer install --no-dev --no-progress
+  if [ ! -d $CONTAINER_WIKI/extensions/StructureSync ]; then
+    echo 'ERROR: StructureSync extension directory not found!'
+    exit 1
+  fi
+  if [ ! -f $CONTAINER_WIKI/extensions/StructureSync/extension.json ]; then
+    echo 'ERROR: StructureSync extension.json not found!'
+    exit 1
+  fi
+  echo '✓ StructureSync extension directory found'
 "
 
-echo "==> Installing StructureSync settings..."
+# ---------------- ENSURE NO vendor/ IN StructureSync ----------------
+
+echo "==> Removing vendor/ inside StructureSync (avoid merge/pollution)..."
+docker compose exec -T mediawiki bash -lc "
+  rm -rf $CONTAINER_WIKI/extensions/StructureSync/vendor || true
+"
+
+echo "==> Installing StructureSync dependencies (isolated)..."
+docker compose exec -T mediawiki bash -lc "
+  cd $CONTAINER_WIKI/extensions/StructureSync
+  composer install --no-dev --no-progress --ignore-platform-reqs || true
+"
+
+echo "==> Removing vendor/ again to protect core vendor..."
+docker compose exec -T mediawiki bash -lc "
+  rm -rf $CONTAINER_WIKI/extensions/StructureSync/vendor || true
+"
+
+echo "==> Enabling StructureSync..."
 docker compose exec -T mediawiki bash -lc "
   sed -i '/StructureSync/d' $CONTAINER_WIKI/LocalSettings.php
-
   {
     echo ''
     echo '// === StructureSync ==='
@@ -168,7 +208,7 @@ docker compose exec -T mediawiki bash -lc "
   } >> $CONTAINER_WIKI/LocalSettings.php
 "
 
-echo "==> Running MW updater for StructureSync schema..."
+echo "==> Running MW updater for StructureSync..."
 docker compose exec -T mediawiki php maintenance/update.php --quick
 
 # ---------------- CACHE DIRECTORY ----------------
@@ -184,80 +224,32 @@ docker compose exec -T mediawiki bash -lc "
 echo "==> Rebuilding LocalisationCache..."
 docker compose exec -T mediawiki php maintenance/rebuildLocalisationCache.php --force
 
-# ---------------- CREATE SCHEMA PROPERTIES ----------------
+# ---------------- TEST EXTENSION LOAD ----------------
 
-echo "==> Creating StructureSync schema properties..."
-docker compose exec -T mediawiki bash -lc "
-  php $CONTAINER_WIKI/maintenance/edit.php -b 'Property:Has_parent_category' <<'PROPEOF'
-This property links to parent categories for inheritance.
-[[Has type::Page]]
-[[Category:StructureSync Properties]]
-PROPEOF
-
-  php $CONTAINER_WIKI/maintenance/edit.php -b 'Property:Has_required_property' <<'PROPEOF'
-This property links to required properties for a category.
-[[Has type::Page]]
-[[Category:StructureSync Properties]]
-PROPEOF
-
-  php $CONTAINER_WIKI/maintenance/edit.php -b 'Property:Has_optional_property' <<'PROPEOF'
-This property links to optional properties for a category.
-[[Has type::Page]]
-[[Category:StructureSync Properties]]
-PROPEOF
-
-  php $CONTAINER_WIKI/maintenance/edit.php -b 'Property:Has_display_section_name' <<'PROPEOF'
-This property stores the name of a display section.
-[[Has type::Text]]
-[[Category:StructureSync Properties]]
-PROPEOF
-
-  php $CONTAINER_WIKI/maintenance/edit.php -b 'Property:Has_display_section_property' <<'PROPEOF'
-This property links to properties in a display section.
-[[Has type::Page]]
-[[Category:StructureSync Properties]]
-PROPEOF
-"
-
-# ---------------- TEST ----------------
-
-echo "==> Testing StructureSync logging..."
+echo "==> Testing StructureSync loading..."
 docker compose exec -T mediawiki php -r "
 define('MW_INSTALL_PATH','/var/www/html/w');
 \$_SERVER['REMOTE_ADDR'] = '127.0.0.1';
 require_once MW_INSTALL_PATH . '/includes/WebStart.php';
-wfDebugLog('structuresync', 'StructureSync test at '.date('H:i:s'));
+echo ExtensionRegistry::getInstance()->isLoaded('StructureSync')
+    ? \"✓ StructureSync loaded\n\"
+    : \"ERROR: StructureSync NOT loaded\n\";
+"
+
+echo "==> Logging test..."
+docker compose exec -T mediawiki php -r "
+wfDebugLog('structuresync', 'StructureSync test log '.date('H:i:s'));
 echo \"OK\n\";
 "
 
-docker compose exec -T mediawiki tail -n 5 "$CONTAINER_LOG_FILE" || echo "Log file not created yet"
+docker compose exec -T mediawiki tail -n 5 "$CONTAINER_LOG_FILE" || echo "No log yet."
 
-# ---------------- POPULATE TEST DATA (OPTIONAL) ----------------
-
-if [ "${POPULATE_TEST_DATA:-}" = "1" ]; then
-    echo ""
-    echo "==> Populating test data..."
-    "$SCRIPT_DIR/populate_test_data.sh" || echo "  Warning: Failed to populate test data (this is optional)"
-fi
+# ---------------- COMPLETE ----------------
 
 echo ""
 echo "========================================"
-echo "DONE - StructureSync test environment ready!"
+echo " DONE — StructureSync test environment ready "
 echo "========================================"
-echo ""
-echo "Visit: http://localhost:$MW_PORT/w"
+echo "Visit http://localhost:$MW_PORT/w"
 echo "Admin: $MW_ADMIN_USER / $MW_ADMIN_PASS"
-echo "Logs at: $LOG_DIR"
-echo "Special page: http://localhost:$MW_PORT/w/index.php/Special:StructureSync"
-echo ""
-echo "Quick commands:"
-echo "  - Export schema: docker compose exec mediawiki php extensions/StructureSync/maintenance/exportOntology.php"
-echo "  - Validate: docker compose exec mediawiki php extensions/StructureSync/maintenance/validateOntology.php"
-echo ""
-if [ "${POPULATE_TEST_DATA:-}" != "1" ]; then
-    echo "To populate test data, run:"
-    echo "  POPULATE_TEST_DATA=1 $SCRIPT_DIR/setup_mw_test_env.sh"
-    echo "  or"
-    echo "  $SCRIPT_DIR/populate_test_data.sh"
-fi
-
+echo "Logs: $LOG_DIR"
