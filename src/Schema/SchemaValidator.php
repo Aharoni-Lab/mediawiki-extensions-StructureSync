@@ -45,7 +45,10 @@ class SchemaValidator {
 	private $customValidators = [];
 
 	/**
-	 * Validate entire schema (errors only, for backward compatibility)
+	 * Validate entire schema (errors only).
+	 * 
+	 * This method returns only errors for compatibility with existing code.
+	 * Use validateSchemaWithSeverity() to get both errors and warnings.
 	 *
 	 * @param array $schema
 	 * @return array List of error messages

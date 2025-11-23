@@ -136,14 +136,11 @@ class WikiPropertyStore
             $data['label'] = trim($m[1]);
         }
 
-        /* Display type (legacy annotation) ------------------------------ */
-        if (preg_match('/\[\[Has display type::([^\|\]]+)/i', $content, $m)) {
-            $data['displayType'] = trim($m[1]);
-        }
-
         /* Display pattern (property-to-property template reference) ----- */
+        // Parse SMW annotation format: [[Has display pattern::Property:Email]]
+        // This is stored as displayFromProperty in the schema
         if (preg_match('/\[\[Has display pattern::Property:([^\|\]]+)/i', $content, $m)) {
-            $data['displayPattern'] = trim($m[1]);
+            $data['displayFromProperty'] = trim($m[1]);
         }
 
         /* Autocomplete sources (category) ------------------------------- */
@@ -192,6 +189,10 @@ class WikiPropertyStore
         $displayData = $this->parseDisplayBlock($content);
         if (!empty($displayData)) {
             $data['display'] = $displayData;
+            // If displayFromProperty is in the Display block, extract it
+            if (isset($displayData['fromProperty'])) {
+                $data['displayFromProperty'] = $displayData['fromProperty'];
+            }
         }
 
         return $data;
@@ -203,6 +204,7 @@ class WikiPropertyStore
      * Returns array with:
      *   'template' => wikitext template string (or null)
      *   'type' => display type reference (or null)
+     *   'fromProperty' => property name for pattern reference (or null)
      */
     private function parseDisplayBlock(string $content): array
     {
@@ -245,6 +247,22 @@ class WikiPropertyStore
             $type = trim($matches[1]);
             if ($type !== '' && strtolower($type) !== 'none') {
                 $result['type'] = $type;
+            }
+        }
+
+        // Extract display from property section (property-to-property template reference)
+        if (
+            preg_match(
+                '/===\s*Display from property\s*===\s*\n([^\n]+)/i',
+                $blockContent,
+                $matches
+            )
+        ) {
+            $fromProperty = trim($matches[1]);
+            if ($fromProperty !== '') {
+                // Remove "Property:" prefix if present
+                $fromProperty = preg_replace('/^Property:/i', '', $fromProperty);
+                $result['fromProperty'] = $fromProperty;
             }
         }
 

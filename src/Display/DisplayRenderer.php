@@ -174,7 +174,7 @@ class DisplayRenderer
      * This method tries multiple rendering strategies in order:
      * 1. Inline display template (highest priority)
      * 2. Display pattern (property-to-property reference)
-     * 3. Display type (legacy annotation or built-in type)
+     * 3. Display type (built-in type)
      * 4. Plain text with HTML escaping (default fallback)
      *
      * @param string $value Property value
@@ -221,11 +221,11 @@ class DisplayRenderer
             }
         }
 
-        // 3. Check for display type (legacy annotation, could reference shared template)
+        // 3. Check for display type (could reference shared template)
         if ($property !== null && $property->getDisplayType() !== null) {
             $displayType = $property->getDisplayType();
 
-            // Try to load as a pattern property (for backwards compat)
+            // Try to load as a pattern property (property-to-property template reference)
             $typeTemplate = $this->loadDisplayTypeTemplate($displayType);
             if ($typeTemplate !== null) {
                 try {
@@ -293,8 +293,7 @@ class DisplayRenderer
     /**
      * Load display template by resolving pattern references.
      * 
-     * This is a convenience wrapper around resolveDisplayPattern() for
-     * backwards compatibility with the legacy display type system.
+     * This is a convenience wrapper around resolveDisplayPattern().
      *
      * @param string $propertyName Property name or pattern name
      * @return string|null Template content or null if not found

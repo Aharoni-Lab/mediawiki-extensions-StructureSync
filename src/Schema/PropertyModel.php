@@ -113,9 +113,6 @@ class PropertyModel
             $this->displayType = trim($data['display']['type']);
         } elseif (isset($data['displayBuiltin'])) {
             $this->displayType = trim($data['displayBuiltin']);
-        } elseif (isset($data['displayType'])) {
-            // Legacy fallback for old schemas
-            $this->displayType = trim($data['displayType']);
         } else {
             $this->displayType = null;
         }
@@ -128,9 +125,6 @@ class PropertyModel
         // Display pattern: property-to-property template reference
         if (isset($data['displayFromProperty'])) {
             $this->displayPattern = trim($data['displayFromProperty']);
-        } elseif (isset($data['displayPattern'])) {
-            // Legacy fallback for old schemas
-            $this->displayPattern = trim($data['displayPattern']);
         } else {
             $this->displayPattern = null;
         }
