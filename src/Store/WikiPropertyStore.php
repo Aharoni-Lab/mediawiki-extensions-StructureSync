@@ -128,6 +128,30 @@ class WikiPropertyStore
             $data['displayPattern'] = trim($m[1]);
         }
 
+        /* Autocomplete sources (category) ------------------------------- */
+        // Support both PageForms and SMW canonical syntax:
+        // [[Allows value from category::Department]]
+        // [[Allows value from::Category:Department]]
+        if (preg_match('/\[\[Allows value from category::([^\|\]]+)/i', $content, $m)) {
+            // PageForms syntax: extract category name directly
+            $data['allowedCategory'] = trim($m[1]);
+        } elseif (preg_match('/\[\[Allows value from::Category:([^\|\]]+)/i', $content, $m)) {
+            // SMW canonical syntax: strip "Category:" prefix
+            $data['allowedCategory'] = trim($m[1]);
+        }
+
+        /* Autocomplete sources (namespace) ------------------------------ */
+        // Support both PageForms and SMW canonical syntax:
+        // [[Allows value from namespace::Main]]
+        // [[Allows value from::Namespace:Main]]
+        if (preg_match('/\[\[Allows value from namespace::([^\|\]]+)/i', $content, $m)) {
+            // PageForms syntax: extract namespace name directly
+            $data['allowedNamespace'] = trim($m[1]);
+        } elseif (preg_match('/\[\[Allows value from::Namespace:([^\|\]]+)/i', $content, $m)) {
+            // SMW canonical syntax: strip "Namespace:" prefix
+            $data['allowedNamespace'] = trim($m[1]);
+        }
+
         /* Description --------------------------------------------------- */
         // Extract from within StructureSync markers, must start with "Description:"
         $startPos = strpos($content, self::MARKER_START);

@@ -181,7 +181,8 @@ echo "  - Page/reference properties..."
 create_property "Has advisor" "Academic advisor or supervisor." "Page" "[[Display label::Advisor]]"
 create_property "Has lab" "Lab or research group affiliation." "Page" "[[Display label::Lab]]"
 create_property "Has institution" "Institutional affiliation." "Page" "[[Display label::Institution]]"
-create_property "Has department" "Department affiliation." "Page" "[[Display label::Department]]"
+create_property "Has department" "Department affiliation." "Page" "[[Display label::Department]]
+[[Allows value from category::Department]]"
 create_property "Has collaborator" "Research collaborators." "Page" ""
 
 # ==========================================
@@ -569,12 +570,41 @@ PAGEOF
 "
 }
 
-echo "  - Creating page targets for Page-type properties..."
+echo "  - Creating Department category for autocomplete demo..."
 
-# Create Biology department page (for Has department property)
-create_page "Biology" "Biology Department.
+# Create Department category (for autocomplete demonstration)
+create_category "Department" "<!-- StructureSync Start -->
+Description: An academic department within an institution.
 
-[[Category:Organization]]"
+=== Required Properties ===
+[[Has required property::Property:Has full name]]
+
+=== Optional Properties ===
+[[Has optional property::Property:Has website]]
+<!-- StructureSync End -->"
+
+echo "  - Creating department pages for autocomplete demo..."
+
+# Create multiple department pages to demonstrate autocomplete
+create_page "Biology" "Biology Department - Study of living organisms.
+
+[[Category:Department]]"
+
+create_page "Chemistry" "Chemistry Department - Physical science of matter.
+
+[[Category:Department]]"
+
+create_page "Computer Science" "Computer Science Department - Study of computation and information.
+
+[[Category:Department]]"
+
+create_page "Mathematics" "Mathematics Department - Study of numbers, quantity, and space.
+
+[[Category:Department]]"
+
+create_page "Physics" "Physics Department - Natural science of matter and energy.
+
+[[Category:Department]]"
 
 echo "  - Base category examples..."
 
@@ -771,16 +801,18 @@ echo "  - Contact: Has email, Has phone, Has website, Has orcid"
 echo "  - Date/Time: Has birth date, Has start date, Has end date, Has publication date"
 echo "  - Numeric: Has cohort year, Has publication count, Has h index, Has room number"
 echo "  - Boolean: Has active status, Has public profile"
-echo "  - Page/Reference: Has advisor, Has lab, Has institution, Has department, Has collaborator"
+echo "  - Page/Reference: Has advisor, Has lab, Has institution, Has collaborator"
+echo "  - With Autocomplete: Has department (demonstrates [[Allows value from category::Department]])"
 echo "  - With Allowed Values: Has lab role, Has academic level, Has employment status"
 echo "  - Specialized: Has geographic location, Has code repository"
 echo "  - Academic: Has degree, Has thesis title, Has research area, Has keywords"
 echo ""
-echo "CATEGORIES (15+):"
+echo "CATEGORIES (16+):"
 echo "  Base Categories (no parents):"
 echo "    - Person (with display sections)"
 echo "    - Organization, Lab, Publication, Project"
 echo "    - LabMember"
+echo "    - Department (for autocomplete demo)"
 echo "  Single Inheritance:"
 echo "    - Faculty (Person -> Faculty)"
 echo "    - Student (Person -> Student)"
@@ -796,7 +828,7 @@ echo "  Edge Cases:"
 echo "    - EmptyCategory (no properties)"
 echo "    - SimpleCategory (minimal schema)"
 echo ""
-echo "EXAMPLE PAGES (10+):"
+echo "EXAMPLE PAGES (15+):"
 echo "  - John_Doe (Person)"
 echo "  - Dr_Alice_Johnson (Faculty)"
 echo "  - Johnson_Lab (Lab)"
@@ -809,6 +841,7 @@ echo "  - Emma_Wilson (MastersStudent)"
 echo "  - Example_University (Organization)"
 echo "  - Recent_Publication_2024 (Publication)"
 echo "  - Protein_Folding_Project (Project)"
+echo "  - Biology, Chemistry, Computer Science, Mathematics, Physics (Departments for autocomplete)"
 echo ""
 echo "ARTIFACTS:"
 echo "  - Templates and Forms generated for all categories"
@@ -843,6 +876,7 @@ echo "5. PROPERTY TYPES:"
 echo "   - Test different datatypes (Text, Email, Date, Number, Boolean, Page, URL)"
 echo "   - Test properties with allowed values (Has lab role)"
 echo "   - Test Page type properties with references"
+echo "   - Test autocomplete from category (Has department → Category:Department)"
 echo ""
 echo "6. DISPLAY SECTIONS:"
 echo "   - View Person category pages to see display sections"

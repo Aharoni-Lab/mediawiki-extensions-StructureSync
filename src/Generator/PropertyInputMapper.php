@@ -47,13 +47,19 @@ class PropertyInputMapper {
         ];
 
         // Special cases override defaults
+        // Priority order: enum values → autocomplete sources → Page-type → defaults
 
-        // Dropdown enum
+        // 1. Dropdown enum (highest priority)
         if ( $property->hasAllowedValues() ) {
             return 'dropdown';
         }
 
-        // Page-type reference (lookup/autocomplete)
+        // 2. Autocomplete from category/namespace
+        if ( $property->shouldAutocomplete() ) {
+            return 'combobox';
+        }
+
+        // 3. Page-type reference (lookup/autocomplete)
         if ( $property->isPageType() ) {
 
             // If restricted to a category (range), use "combobox"
@@ -65,7 +71,7 @@ class PropertyInputMapper {
             return 'combobox';
         }
 
-        // Fallback
+        // 4. Fallback to datatype mapping
         return $map[$datatype] ?? 'text';
     }
 
@@ -100,7 +106,7 @@ class PropertyInputMapper {
         }
 
         /* ------------------------------------------------------------------
-         * ENUMERATED VALUES
+         * ENUMERATED VALUES (highest priority)
          * ------------------------------------------------------------------ */
         if ( $property->hasAllowedValues() ) {
             // PageForms expects comma-separated list with NO SPACES
@@ -108,9 +114,25 @@ class PropertyInputMapper {
         }
 
         /* ------------------------------------------------------------------
-         * PAGE / COMBOBOX LOOKUPS
+         * AUTOCOMPLETE SOURCES (category/namespace)
          * ------------------------------------------------------------------ */
-        if ( $property->isPageType() && $property->getRangeCategory() !== null ) {
+        elseif ( $property->shouldAutocomplete() ) {
+            // Autocomplete from category
+            if ( $property->getAllowedCategory() !== null ) {
+                $params['values from category'] = $property->getAllowedCategory();
+                $params['autocomplete'] = 'on';
+            }
+            // Autocomplete from namespace
+            elseif ( $property->getAllowedNamespace() !== null ) {
+                $params['values from namespace'] = $property->getAllowedNamespace();
+                $params['autocomplete'] = 'on';
+            }
+        }
+
+        /* ------------------------------------------------------------------
+         * PAGE / COMBOBOX LOOKUPS (Page-type with rangeCategory)
+         * ------------------------------------------------------------------ */
+        elseif ( $property->isPageType() && $property->getRangeCategory() !== null ) {
             $params['values from category'] = $property->getRangeCategory();
             $params['autocomplete'] = 'on';
         }

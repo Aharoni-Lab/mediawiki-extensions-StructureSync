@@ -50,6 +50,12 @@ class PropertyModel
     /** @var string|null Property name to reference for display pattern */
     private $displayPattern;
 
+    /** @var string|null Category name for autocomplete value source */
+    private $allowedCategory;
+
+    /** @var string|null Namespace name for autocomplete value source */
+    private $allowedNamespace;
+
     /* ---------------------------------------------------------------------
      * CONSTRUCTOR
      * --------------------------------------------------------------------- */
@@ -119,6 +125,15 @@ class PropertyModel
         } else {
             $this->displayPattern = null;
         }
+
+        // Autocomplete sources (normalized without prefixes)
+        $this->allowedCategory = isset($data['allowedCategory'])
+            ? trim($data['allowedCategory'])
+            : null;
+
+        $this->allowedNamespace = isset($data['allowedNamespace'])
+            ? trim($data['allowedNamespace'])
+            : null;
     }
 
     /* ---------------------------------------------------------------------
@@ -256,6 +271,16 @@ class PropertyModel
         return $this->displayPattern;
     }
 
+    public function getAllowedCategory(): ?string
+    {
+        return $this->allowedCategory;
+    }
+
+    public function getAllowedNamespace(): ?string
+    {
+        return $this->allowedNamespace;
+    }
+
     /* ---------------------------------------------------------------------
      * BOOLEAN CHECKS
      * --------------------------------------------------------------------- */
@@ -282,6 +307,23 @@ class PropertyModel
     public function isCategoryRestrictedPageType(): bool
     {
         return $this->isPageType() && $this->rangeCategory !== null && $this->rangeCategory !== '';
+    }
+
+    /**
+     * Whether this property should use autocomplete in forms.
+     * 
+     * Returns true if:
+     *   - Property does NOT have enum values (allowedValues)
+     *   - Property HAS either allowedCategory or allowedNamespace defined
+     * 
+     * This keeps PropertyInputMapper logic clean and centralizes the decision.
+     *
+     * @return bool
+     */
+    public function shouldAutocomplete(): bool
+    {
+        return !$this->hasAllowedValues() 
+            && ($this->allowedCategory !== null || $this->allowedNamespace !== null);
     }
 
     /* ---------------------------------------------------------------------
@@ -326,6 +368,15 @@ class PropertyModel
         // Include displayFromProperty if present (property reference for template)
         if ($this->displayPattern !== null) {
             $data['displayFromProperty'] = $this->displayPattern;
+        }
+
+        // Include autocomplete sources if present
+        if ($this->allowedCategory !== null) {
+            $data['allowedCategory'] = $this->allowedCategory;
+        }
+
+        if ($this->allowedNamespace !== null) {
+            $data['allowedNamespace'] = $this->allowedNamespace;
         }
 
         return $data;
