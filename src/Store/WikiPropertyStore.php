@@ -186,9 +186,39 @@ class WikiPropertyStore
         }
 
         /* Allows multiple values ---------------------------------------- */
-        $multiValues = $this->getSMWPropertyValues($semanticData, 'Allows multiple values', 'text');
-        if (!empty($multiValues) && in_array(strtolower($multiValues[0]), ['true', 'yes', '1'])) {
-            $data['allowsMultipleValues'] = true;
+        // SMW stores [[Allows multiple values::true]] as a Boolean property
+        try {
+            $allowsProp = \SMW\DIProperty::newFromUserLabel('Allows multiple values');
+            $allowsValues = $semanticData->getPropertyValues($allowsProp);
+            
+            if (!empty($allowsValues)) {
+                foreach ($allowsValues as $dataItem) {
+                    // Check for Boolean type (most common)
+                    if ($dataItem instanceof \SMWDIBoolean) {
+                        if ($dataItem->getBoolean()) {
+                            $data['allowsMultipleValues'] = true;
+                            break;
+                        }
+                    }
+                    // Fallback: check text/string types
+                    elseif ($dataItem instanceof \SMWDIBlob || $dataItem instanceof \SMWDIString) {
+                        $val = strtolower(trim($dataItem->getString()));
+                        if (in_array($val, ['true', 'yes', '1', 't', 'y'])) {
+                            $data['allowsMultipleValues'] = true;
+                            break;
+                        }
+                    }
+                    // Fallback: check numeric types
+                    elseif ($dataItem instanceof \SMWDINumber) {
+                        if ($dataItem->getNumber() > 0) {
+                            $data['allowsMultipleValues'] = true;
+                            break;
+                        }
+                    }
+                }
+            }
+        } catch (\Exception $e) {
+            // Property doesn't exist or error querying - allowsMultipleValues stays false
         }
 
         /* Display block (new wiki-editable templates) ------------------- */

@@ -13,7 +13,7 @@ use MediaWiki\Extension\StructureSync\Schema\PropertyModel;
  * property types and constraints to PageForms input field types and parameters.
  * 
  * Mapping Priority (highest to lowest):
- * 1. Multiple values → tokens (supports autocomplete)
+ * 1. Multiple values → tokens (with |multiple flag)
  * 2. Allowed values (enum) → dropdown
  * 3. Autocomplete sources (category/namespace) → combobox
  * 4. Page type with range restriction → combobox
@@ -53,7 +53,7 @@ class PropertyInputMapper {
      *   - Boolean property → checkbox
      *   - Property with allowed values ["A", "B", "C"] → dropdown
      *   - Page property with category range → combobox with autocomplete
-     *   - Property with [[Allows multiple values::true]] → tokens (supports autocomplete)
+     *   - Property with [[Allows multiple values::true]] → tokens with |multiple flag
      *
      * @param PropertyModel $property Property to map
      * @return string PageForms input type (e.g., 'text', 'dropdown', 'combobox', 'tokens')
@@ -124,6 +124,7 @@ class PropertyInputMapper {
      * Parameters are property-specific and depend on the datatype and constraints.
      * 
      * Common parameters:
+     * - multiple: Boolean flag for properties that allow multiple values (no value needed)
      * - size: Width of text inputs (default: 60)
      * - rows/cols: Dimensions for textarea
      * - values: Comma-separated list for dropdown/checkboxes
@@ -140,6 +141,14 @@ class PropertyInputMapper {
 
         $params = [];
         $datatype = $property->getDatatype();
+
+        /* ------------------------------------------------------------------
+         * MULTIPLE VALUES
+         * When a property allows multiple values, we need the |multiple flag
+         * ------------------------------------------------------------------ */
+        if ( $property->allowsMultipleValues() ) {
+            $params['multiple'] = '';  // PageForms uses |multiple (no value needed)
+        }
 
         /* ------------------------------------------------------------------
          * TEXT-LIKE FIELDS
@@ -214,6 +223,7 @@ class PropertyInputMapper {
      * - "input type=text|size=60"
      * - "input type=dropdown|values=A,B,C|mandatory=true"
      * - "input type=combobox|values from category=Department|autocomplete=on"
+     * - "input type=tokens|multiple|values from category=Person|autocomplete=on"
      * 
      * The mandatory parameter is only added for required fields to avoid
      * PageForms validation on optional fields.
@@ -236,15 +246,19 @@ class PropertyInputMapper {
         // Build "key=value" segments
         $paramText = '';
         foreach ( $params as $key => $value ) {
-            // Avoid empty or null parameters
-            if ( $value === '' || $value === null ) {
+            // Handle boolean flags (no value needed, e.g., |multiple)
+            if ( $value === '' ) {
+                $paramText .= "|$key";
                 continue;
             }
+            
+            // Skip null parameters
+            if ( $value === null ) {
+                continue;
+            }
+            
             $paramText .= "|$key=$value";
         }
-
-        // Note: For properties with allowsMultipleValues=true, we use 'tokens' input type
-        // which inherently supports multiple values, so no additional |multiple flag is needed
 
         return "input type=$inputType$paramText";
     }
