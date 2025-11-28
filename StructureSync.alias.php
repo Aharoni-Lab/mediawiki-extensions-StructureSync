@@ -19,5 +19,6 @@ $magicWords = [];
 $magicWords['en'] = [
 	'StructureSyncRenderAllProperties' => [0, 'StructureSyncRenderAllProperties'],
 	'StructureSyncRenderSection' => [0, 'StructureSyncRenderSection'],
+	'structuresync_hierarchy' => [0, 'structuresync_hierarchy'],
 ];
 

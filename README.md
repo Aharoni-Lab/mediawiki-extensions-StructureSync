@@ -55,6 +55,22 @@ Access the main interface at `Special:StructureSync` which provides:
 - **Validate**: Check schema consistency
 - **Generate**: Regenerate templates and forms
 - **Diff**: Compare schema file with current wiki state
+- **Hierarchy**: Visualize category inheritance trees and inherited properties
+
+### Category Hierarchy Visualization
+
+StructureSync provides powerful tools to visualize category inheritance:
+
+- **Special:StructureSync/hierarchy**: Interactive hierarchy viewer
+- **Parser function**: `{{#structuresync_hierarchy:}}` to embed on category pages
+- **API endpoint**: `api.php?action=structuresync-hierarchy&category=NAME`
+
+The visualization shows:
+- Complete inheritance tree with parent/grandparent relationships
+- All inherited properties grouped by source category
+- Visual distinction between required (red) and optional (green) properties
+
+📖 **[Complete Hierarchy Documentation](docs/hierarchy-visualization.md)**
 
 ### Maintenance Scripts
 

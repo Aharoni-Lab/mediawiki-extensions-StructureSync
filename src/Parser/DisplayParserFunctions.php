@@ -70,6 +70,12 @@ class DisplayParserFunctions
             [$instance, 'renderSection'],
             SFH_OBJECT_ARGS
         );
+
+        $parser->setFunctionHook(
+            'structuresync_hierarchy',
+            [$instance, 'renderHierarchy'],
+            SFH_OBJECT_ARGS
+        );
     }
 
     /**
@@ -171,6 +177,59 @@ class DisplayParserFunctions
             wfLogWarning("StructureSync: Failed to render section '$sectionName' for category '$categoryName': " . $e->getMessage());
             return '';
         }
+    }
+
+    /**
+     * Handle {{#structuresync_hierarchy:}} parser function.
+     * 
+     * Renders category hierarchy visualization on category pages.
+     * Shows inheritance tree and inherited properties.
+     * 
+     * Syntax: {{#structuresync_hierarchy:}}
+     * 
+     * Note: Automatically detects the current category from parser context.
+     * Only works on Category namespace pages.
+     * 
+     * @param Parser $parser MediaWiki parser instance
+     * @param PPFrame $frame Parser frame with template arguments
+     * @param array $args Function arguments (not used)
+     * @return array|string Parser function return value [html, flags] or empty string
+     */
+    public function renderHierarchy(Parser $parser, PPFrame $frame, array $args)
+    {
+        // Get the current page title
+        $title = $parser->getTitle();
+        
+        // Only work on Category namespace pages
+        if ($title === null || $title->getNamespace() !== NS_CATEGORY) {
+            return '';
+        }
+
+        // Get category name without namespace prefix
+        $categoryName = $title->getText();
+
+        // Add the hierarchy ResourceLoader module
+        $parser->getOutput()->addModules(['ext.structuresync.hierarchy']);
+
+        // Create unique container ID
+        $containerId = 'ss-category-hierarchy-' . md5($categoryName);
+
+        // Build HTML structure with data-category attribute for auto-initialization
+        $html = \Html::rawElement(
+            'div',
+            [
+                'id' => $containerId,
+                'class' => 'ss-hierarchy-block mw-collapsible',
+                'data-category' => $categoryName,
+            ],
+            \Html::element(
+                'p',
+                [],
+                wfMessage('structuresync-hierarchy-loading')->text()
+            )
+        );
+
+        return [$html, 'noparse' => false, 'isHTML' => true];
     }
 
     /**

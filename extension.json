@@ -46,7 +46,44 @@
 				"desktop",
 				"mobile"
 			]
+		},
+		"ext.structuresync.hierarchy": {
+			"scripts": [
+				"resources/ext.structuresync.hierarchy.js"
+			],
+			"styles": [
+				"resources/ext.structuresync.hierarchy.css"
+			],
+			"dependencies": [
+				"mediawiki.api",
+				"mediawiki.util",
+				"jquery"
+			],
+			"messages": [
+				"structuresync-hierarchy-no-data",
+				"structuresync-hierarchy-no-properties",
+				"structuresync-hierarchy-loading",
+				"structuresync-hierarchy-error",
+				"structuresync-hierarchy-no-category",
+				"structuresync-hierarchy-tree-title",
+				"structuresync-hierarchy-props-title",
+				"structuresync-hierarchy-source-category",
+				"structuresync-hierarchy-properties",
+				"structuresync-hierarchy-unknown-category",
+				"structuresync-hierarchy-unnamed-property",
+				"structuresync-hierarchy-required",
+				"structuresync-hierarchy-optional"
+			],
+			"localBasePath": "",
+			"remoteExtPath": "StructureSync",
+			"targets": [
+				"desktop",
+				"mobile"
+			]
 		}
+	},
+	"APIModules": {
+		"structuresync-hierarchy": "MediaWiki\\Extension\\StructureSync\\Api\\ApiStructureSyncHierarchy"
 	},
 	"SpecialPages": {
 		"StructureSync": "MediaWiki\\Extension\\StructureSync\\Special\\SpecialStructureSync"

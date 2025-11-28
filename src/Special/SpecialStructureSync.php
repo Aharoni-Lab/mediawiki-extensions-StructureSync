@@ -194,6 +194,9 @@ class SpecialStructureSync extends SpecialPage
 			case 'diff':
 				$this->showDiff();
 				break;
+			case 'hierarchy':
+				$this->showHierarchy();
+				break;
 			case 'overview':
 			default:
 				$this->showOverview();
@@ -232,6 +235,10 @@ class SpecialStructureSync extends SpecialPage
 			'diff' => [
 				'label' => $this->msg('structuresync-diff')->text(),
 				'subtext' => $this->msg('structuresync-tab-diff-subtext')->text(),
+			],
+			'hierarchy' => [
+				'label' => $this->msg('structuresync-hierarchy')->text(),
+				'subtext' => $this->msg('structuresync-tab-hierarchy-subtext')->text(),
 			],
 		];
 
@@ -1635,6 +1642,93 @@ class SpecialStructureSync extends SpecialPage
 		} catch (\Exception $e) {
 			$output->addHTML(Html::errorBox('Error: ' . $e->getMessage()));
 		}
+	}
+
+	/**
+	 * Show hierarchy visualization tab.
+	 * 
+	 * Provides a simple form to select a category and displays:
+	 * - Inheritance tree (parents, grandparents, etc.)
+	 * - Inherited properties with source category and required/optional status
+	 */
+	private function showHierarchy(): void
+	{
+		$output = $this->getOutput();
+		$request = $this->getRequest();
+		$output->setPageTitle($this->msg('structuresync-hierarchy-title')->text());
+
+		// Add the hierarchy module
+		$output->addModules('ext.structuresync.hierarchy');
+
+		// Form for category selection
+		$form = Html::openElement('form', [
+			'method' => 'get',
+			'class' => 'ss-hierarchy-special-form',
+		]);
+
+		// Hidden field to maintain the subpage
+		$form .= Html::element('input', [
+			'type' => 'hidden',
+			'name' => 'title',
+			'value' => $this->getPageTitle('hierarchy')->getPrefixedText(),
+		]);
+
+		// Category input field
+		$form .= Html::element('label', [
+			'for' => 'ss-hierarchy-category-input',
+		], $this->msg('structuresync-hierarchy-category-label')->text());
+
+		$categoryValue = $request->getText('category', '');
+		$form .= Html::element('input', [
+			'type' => 'text',
+			'id' => 'ss-hierarchy-category-input',
+			'name' => 'category',
+			'value' => $categoryValue,
+			'placeholder' => 'e.g., PhDStudent',
+		]);
+
+		// Submit button
+		$form .= Html::element('button', [
+			'type' => 'submit',
+			'class' => 'mw-ui-button mw-ui-progressive',
+		], $this->msg('structuresync-hierarchy-show-button')->text());
+
+		$form .= Html::closeElement('form');
+
+		// Container for hierarchy visualization
+		// If a category was submitted, add it as a data attribute for JS to pick up
+		$containerAttrs = [
+			'id' => 'ss-hierarchy-container',
+			'class' => 'ss-hierarchy-block',
+		];
+		if ($categoryValue !== '') {
+			$containerAttrs['data-category'] = $categoryValue;
+		}
+		$container = Html::rawElement('div', $containerAttrs, '');
+
+		// Build the card
+		$card = Html::rawElement(
+			'div',
+			['class' => 'structuresync-card'],
+			Html::rawElement(
+				'div',
+				['class' => 'structuresync-card-header'],
+				Html::element(
+					'h3',
+					['class' => 'structuresync-card-title'],
+					$this->msg('structuresync-hierarchy-title')->text()
+				) .
+				Html::element(
+					'p',
+					['class' => 'structuresync-card-subtitle'],
+					$this->msg('structuresync-hierarchy-tree-title')->text()
+				)
+			) .
+			$form .
+			$container
+		);
+
+		$output->addHTML($this->wrapShell($card));
 	}
 
 	/**
