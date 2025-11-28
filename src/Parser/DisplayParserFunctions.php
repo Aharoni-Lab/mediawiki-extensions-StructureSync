@@ -3,6 +3,7 @@
 namespace MediaWiki\Extension\StructureSync\Parser;
 
 use MediaWiki\Extension\StructureSync\Display\DisplayRenderer;
+use MediaWiki\Html\Html;
 use Parser;
 use PPFrame;
 
@@ -215,14 +216,14 @@ class DisplayParserFunctions
         $containerId = 'ss-category-hierarchy-' . md5($categoryName);
 
         // Build HTML structure with data-category attribute for auto-initialization
-        $html = \Html::rawElement(
+        $html = Html::rawElement(
             'div',
             [
                 'id' => $containerId,
                 'class' => 'ss-hierarchy-block mw-collapsible',
                 'data-category' => $categoryName,
             ],
-            \Html::element(
+            Html::element(
                 'p',
                 [],
                 wfMessage('structuresync-hierarchy-loading')->text()
