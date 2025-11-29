@@ -116,10 +116,12 @@ class TemplateGenerator
         }
 
         $lines[] = '}}';
-
+        
         /* ------------------------------------------------------------------
          * Category assignment (so pages using this template are categorized)
          * ------------------------------------------------------------------ */
+        // Adding category membership for proper PageForms integration
+        // With $smwgChangePropagationProtection = false, this no longer causes locks
         $lines[] = '';
         $lines[] = '[[Category:' . $this->sanitize($category->getName()) . ']]';
 

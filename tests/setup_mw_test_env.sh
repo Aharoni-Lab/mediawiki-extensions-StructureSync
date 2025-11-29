@@ -119,6 +119,14 @@ docker compose exec -T mediawiki bash -lc "
     echo '// === Semantic MediaWiki ==='
     echo 'wfLoadExtension(\"SemanticMediaWiki\");'
     echo 'enableSemantics(\"localhost\");'
+    echo ''
+    echo '// Disable SMW change propagation protection'
+    echo '// This prevents pages from being locked during semantic data updates.'
+    echo '// Without this, creating categories with parent categories triggers'
+    echo '// change propagation on Category:Category and other parent categories,'
+    echo '// causing edit locks that persist even after job queue completes.'
+    echo '// This is safe for development and most production wikis.'
+    echo '\$smwgChangePropagationProtection = false;'
   } >> $CONTAINER_WIKI/LocalSettings.php
 "
 
@@ -151,6 +159,24 @@ docker compose exec -T mediawiki bash -lc "
     echo '// === PageForms ==='
     echo 'wfLoadExtension(\"PageForms\");'
     echo '\$wgPageFormsAllowCreateInRestrictedNamespaces = true;'
+    echo '\$wgPageFormsLinkAllRedLinksToForms = true;'
+    echo '\$wgPageFormsFormCacheType = CACHE_NONE;'
+    echo ''
+    echo '// Enable \"Edit with form\" links on Category namespace pages'
+    echo '\$wgNamespacesWithSemanticLinks[NS_CATEGORY] = true;'
+    echo ''
+    echo '// Add \"Edit with form\" tab for Category namespace pages'
+    echo '\$wgHooks[\"SkinTemplateNavigation::Universal\"][] = function ( \$skin, &\$links ) {'
+    echo '    \$title = \$skin->getTitle();'
+    echo '    if ( \$title && \$title->inNamespace( NS_CATEGORY ) && \$title->exists() ) {'
+    echo '        \$form = \"Category\";'
+    echo '        \$links[\"views\"][\"formedit\"] = ['
+    echo '            \"class\" => false,'
+    echo '            \"text\"  => \"Edit with form\",'
+    echo '            \"href\"  => SpecialPage::getTitleFor( \"FormEdit\", \$form . \"/\" . \$title->getPrefixedText() )->getLocalURL(),'
+    echo '        ];'
+    echo '    }'
+    echo '};'
   } >> $CONTAINER_WIKI/LocalSettings.php
 "
 

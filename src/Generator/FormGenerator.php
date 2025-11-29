@@ -170,6 +170,14 @@ class FormGenerator {
         $lines[] = '{{{end template}}}';
         $lines[] = '';
         
+        // Add free text section for parent category membership
+        // This becomes static page content, not template code
+        if ( $hasParentCategoryField ) {
+            $lines[] = '<!-- Parent category membership section -->';
+            $lines[] = '{{{standard input|free text|hidden|rows=1|placeholder=Parent categories will be added automatically|id=ss-parent-categories}}}';
+            $lines[] = '';
+        }
+        
         // Add hierarchy preview container if "Has parent category" is present
         if ( $hasParentCategoryField ) {
             $lines[] = "'''Hierarchy Preview:'''";

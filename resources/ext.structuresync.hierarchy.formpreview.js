@@ -439,6 +439,49 @@
 			console.log('[StructureSync] Form preview initialized for category:', categoryName);
 		}
 
+		// Find the free text field for parent category membership
+		var $freeTextField = $('input[name="pf_free_text"], textarea[name="pf_free_text"]').first();
+		
+		// Debug: Log free text field
+		if (window.console && console.log) {
+			console.log('[StructureSync] Free text field found:', $freeTextField.length);
+		}
+		
+		/**
+		 * Update free text field with category membership links
+		 */
+		function updateFreeText() {
+			if ($freeTextField.length === 0) {
+				if (window.console && console.log) {
+					console.log('[StructureSync] No free text field found, skipping category link update');
+				}
+				return;
+			}
+			
+			var parents = extractParentCategories($parentField);
+			if (parents.length === 0) {
+				$freeTextField.val('');
+				if (window.console && console.log) {
+					console.log('[StructureSync] Cleared free text field (no parents)');
+				}
+				return;
+			}
+			
+			// Build category links - one per line for readability
+			var categoryLinks = parents.map(function(parent) {
+				// Remove "Category:" prefix if present, then add it back
+				var cleanName = parent.replace(/^Category:\s*/i, '');
+				return '[[Category:' + cleanName + ']]';
+			});
+			
+			var linkText = categoryLinks.join('\n');
+			$freeTextField.val(linkText);
+			
+			if (window.console && console.log) {
+				console.log('[StructureSync] Updated free text field with:', linkText);
+			}
+		}
+
 		// Watch for changes to the parent field
 		// For Select2 fields, we listen to 'change' events
 		$parentField.on('change', function () {
@@ -455,7 +498,10 @@
 				}
 				
 				var parents = extractParentCategories($parentField);
+				
+				// Update both the preview and the free text field
 				updatePreview(currentCategory, parents);
+				updateFreeText();
 			}, UPDATE_DELAY);
 		});
 
@@ -478,6 +524,7 @@
 		var initialParents = extractParentCategories($parentField);
 		if (initialParents.length > 0) {
 			updatePreview(categoryName, initialParents);
+			updateFreeText();
 		} else {
 			// Show empty state
 			$previewContainer.html('<p class="ss-hierarchy-empty">Add parent categories to see what this category will inherit.</p>');
