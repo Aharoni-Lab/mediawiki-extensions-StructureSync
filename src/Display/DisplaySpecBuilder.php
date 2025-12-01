@@ -105,6 +105,8 @@ class DisplaySpecBuilder {
 			throw new \InvalidArgumentException( 'Category name cannot be empty' );
 		}
 
+		wfDebugLog('structuresync', "DisplaySpecBuilder: Building spec for category '$categoryName'");
+
 		// 1. Get linearized ancestor list.
 		// InheritanceResolver::getAncestors() returns the C3-linearized chain:
 		// [ self, parent, grandparent, ... root ]
@@ -130,6 +132,8 @@ class DisplaySpecBuilder {
 				wfLogWarning( "StructureSync: Category '$ancestorName' in inheritance chain not found" );
 			}
 		}
+
+		wfDebugLog('structuresync', "DisplaySpecBuilder: Built chain of " . count($chain) . " categories");
 
 		$mergedSections = [];
 
@@ -222,9 +226,14 @@ class DisplaySpecBuilder {
 				? end( $chain )
 				: $this->categoryStore->readCategory( $categoryName );
 
+		wfDebugLog('structuresync', "DisplaySpecBuilder: After merging, have " . count($mergedSections) . " sections");
+		wfDebugLog('structuresync', "DisplaySpecBuilder: Current category: " . ($currentCategory ? $currentCategory->getName() : 'null'));
+
 		// 3. If no sections defined anywhere, create a default section
 		if ( empty( $mergedSections ) && $currentCategory instanceof CategoryModel ) {
 			$allProps = $currentCategory->getAllProperties();
+			
+			wfDebugLog('structuresync', "DisplaySpecBuilder: No sections found, creating default section with " . count($allProps) . " properties");
 
 			// Normalize and deduplicate
 			$allProps = array_map(
@@ -284,6 +293,8 @@ class DisplaySpecBuilder {
 				$optionalSubgroups[] = $subgroup;
 			}
 		}
+
+		wfDebugLog('structuresync', "DisplaySpecBuilder: Returning " . count($mergedSections) . " sections");
 
 		return [
 			'sections'  => $mergedSections,

@@ -127,6 +127,11 @@ docker compose exec -T mediawiki bash -lc "
     echo '// causing edit locks that persist even after job queue completes.'
     echo '// This is safe for development and most production wikis.'
     echo '\$smwgChangePropagationProtection = false;'
+    echo ''
+    echo '// Prevent transaction errors with PageForms + SMW'
+    echo '// Disabling deferred updates prevents transaction conflicts during form submission'
+    echo '\$smwgEnabledDeferredUpdate = false;'
+    echo '\$smwgQMaxInlineLimit = 500;'
   } >> $CONTAINER_WIKI/LocalSettings.php
 "
 

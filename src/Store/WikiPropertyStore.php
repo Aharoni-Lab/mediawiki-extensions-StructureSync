@@ -156,6 +156,21 @@ class WikiPropertyStore {
         $out['allowsMultipleValues'] =
             $this->fetchBoolean($sdata, 'Allows multiple values');
 
+        /* -------------------- Display Configuration -------------------- */
+        $displayType = $this->fetchOne($sdata, 'Has display type', 'text');
+        $displayTemplate = $this->fetchOne($sdata, 'Has display template', 'text');
+        $displayPattern = $this->fetchOne($sdata, 'Has display pattern', 'property');
+
+        if ($displayType || $displayTemplate || $displayPattern) {
+            wfDebugLog('structuresync', "WikiPropertyStore: Display config for property - type: " . ($displayType ?? 'null') . ", template: " . ($displayTemplate ? 'SET' : 'null') . ", pattern: " . ($displayPattern ?? 'null'));
+        }
+
+        $out['display'] = [
+            'type' => $displayType,
+            'template' => $displayTemplate,
+            'fromProperty' => $displayPattern,
+        ];
+
         // Clean null/empty
         return array_filter(
             $out,

@@ -54,26 +54,6 @@ PROPEOF
 "
 }
 
-# Helper function to create a property with display template
-create_property_with_display() {
-    local name="$1"
-    local description="$2"
-    local type="$3"
-    local display_block="$4"  # Display template/type block
-    
-    docker compose exec -T mediawiki bash -c "php maintenance/edit.php -b 'Property:$name' <<'PROPEOF'
-<!-- StructureSync Start -->
-[[Has type::$type]]
-[[Has description::$description]]
-
-$display_block
-<!-- StructureSync End -->
-
-[[Category:Properties]]
-PROPEOF
-"
-}
-
 # Helper function to create a category
 create_category() {
     local name="$1"
@@ -211,6 +191,43 @@ docker compose exec -T mediawiki bash -c "php maintenance/edit.php -b 'Property:
 PROPEOF
 "
 
+# Create display configuration meta-properties
+docker compose exec -T mediawiki bash -c "php maintenance/edit.php -b 'Property:Has display template' <<'PROPEOF'
+<!-- StructureSync Start -->
+[[Has type::Text]]
+[[Has description::Defines a custom HTML/wikitext template for displaying this property's value. Use {{{value}}} as placeholder.]]
+<!-- StructureSync End -->
+
+[[Category:Properties]]
+PROPEOF
+"
+
+docker compose exec -T mediawiki bash -c "php maintenance/edit.php -b 'Property:Has display type' <<'PROPEOF'
+<!-- StructureSync Start -->
+[[Has type::Text]]
+[[Has description::Specifies the display type for rendering (e.g., Email, URL, Image, Boolean).]]
+[[Allows value::Email]]
+[[Allows value::URL]]
+[[Allows value::Image]]
+[[Allows value::Boolean]]
+[[Allows value::none]]
+<!-- StructureSync End -->
+
+[[Category:Properties]]
+PROPEOF
+"
+
+docker compose exec -T mediawiki bash -c "php maintenance/edit.php -b 'Property:Has display pattern' <<'PROPEOF'
+<!-- StructureSync Start -->
+[[Has type::Page]]
+[[Has description::References another property to use its display template as a pattern.]]
+[[Allows value from namespace::Property]]
+<!-- StructureSync End -->
+
+[[Category:Properties]]
+PROPEOF
+"
+
 # ==========================================
 # Meta-Properties
 # ==========================================
@@ -228,15 +245,9 @@ create_property "Has display type" "Controls how a property is rendered (e.g. Em
 echo "  - Text properties..."
 create_property "Has full name" "The full name of a person." "Text" "[[Display label::Full Name]]"
 
-# Biography with custom display template
-create_property_with_display "Has biography" "Biography or description text." "Text" "=== Display template ===
-<div class=\"bio-block\" style=\"background: #f9f9f9; padding: 10px; border-left: 3px solid #0066cc; margin: 10px 0;\">
-  <div class=\"bio-label\" style=\"font-weight: bold; color: #0066cc; margin-bottom: 5px;\">Biography</div>
-  <div class=\"bio-value\" style=\"white-space: pre-wrap;\">{{{value}}}</div>
-</div>
-
-=== Display type ===
-none"
+# Biography with custom display template (using semantic properties)
+create_property "Has biography" "Biography or description text." "Text" "[[Has display template::<div class=\"bio-block\" style=\"background: #f9f9f9; padding: 10px; border-left: 3px solid #0066cc; margin: 10px 0;\"><div class=\"bio-label\" style=\"font-weight: bold; color: #0066cc; margin-bottom: 5px;\">Biography</div><div class=\"bio-value\" style=\"white-space: pre-wrap;\">{{{value}}}</div></div>]]
+[[Has display type::none]]"
 
 create_property "Has research interests" "Research interests and expertise areas." "Text" "[[Display label::Research Interests]]"
 create_property "Has office location" "Office or workspace location." "Text" ""
@@ -248,24 +259,17 @@ echo "  - Contact information properties..."
 
 # Create display pattern properties (templates that other properties can reference)
 echo "  - Display pattern properties..."
-create_property_with_display "Email" "Display pattern for rendering email addresses." "Text" "=== Display template ===
-[mailto:{{{value}}} {{{value}}}]
-
-=== Display type ===
-none
-
+create_property "Email" "Display pattern for rendering email addresses." "Text" "[[Has display template::<a href="mailto:{{{value}}}">{{{value}}}</a>]]
+[[Has display type::none]]
 [[Category:Display Patterns]]"
 
-create_property_with_display "URL" "Display pattern for rendering website URLs." "Text" "=== Display template ===
-[{{{value}}} Website]
-
-=== Display type ===
-none
-
+create_property "URL" "Display pattern for rendering website URLs." "Text" "[[Has display template::<a href=\"{{{value}}}\" target=\"_blank\" rel=\"noopener noreferrer\">{{{value}}}</a>]]
+[[Has display type::none]]
 [[Category:Display Patterns]]"
 
 # Contact properties using display patterns
-create_property "Has email" "Email address." "Email" "[[Display label::Email]][[Has display pattern::Property:Email]]"
+create_property "Has email" "Email address." "Email" "[[Display label::Email]]
+[[Has display pattern::Property:Email]]"
 create_property "Has phone" "Phone number." "Telephone number" ""
 create_property "Has website" "Personal or lab website URL." "URL" "[[Has display pattern::Property:URL]]"
 create_property "Has orcid" "ORCID identifier (e.g., 0000-0000-0000-0000)." "Text" ""
