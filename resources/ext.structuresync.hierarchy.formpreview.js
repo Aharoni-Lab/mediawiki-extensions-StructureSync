@@ -1,21 +1,47 @@
 /**
  * StructureSync Hierarchy Form Preview
- * ======================================
- * Dynamic hierarchy preview for Form:Category (category creation forms).
+ * =====================================
+ * Provides live hierarchy preview for category creation forms.
  * 
- * Watches the parent category field and updates the hierarchy preview as the user types.
+ * When users create or edit categories via PageForms, this module:
+ * - Watches the parent category field for changes
+ * - Makes API calls to compute inheritance hierarchy
+ * - Displays a tree visualization of parent/child relationships
+ * - Shows inherited properties and subgroups
+ * - Auto-populates free text field with category membership tags
  * 
- * Usage:
- * 1. Add this module to your Form:Category page via ResourceLoader
- * 2. Add a container div with id="ss-form-hierarchy-preview"
- * 3. The module will auto-detect parent category fields and update the preview
+ * Architecture:
+ * - Automatically loads via {{#structuresync_load_form_preview:}}
+ * - Finds parent field using data-parent-field attribute
+ * - Debounces updates to avoid excessive API calls
+ * - Renders using jQuery DOM manipulation
+ * 
+ * Requirements:
+ * - Container div: <div id="ss-form-hierarchy-preview" data-parent-field="FIELD_NAME">
+ * - PageForms tokens/combobox field for parent categories
+ * - API endpoint: action=structuresync-hierarchy
  */
 
 (function (mw, $) {
 	'use strict';
 
+	// Configuration
 	var updateTimer = null;
-	var UPDATE_DELAY = 500; // milliseconds to wait after typing stops
+	var UPDATE_DELAY = 500; // Debounce delay (ms) after user stops typing
+	var DEBUG = false; // Enable for detailed console logging
+
+	/**
+	 * Log debug messages (only when DEBUG mode is enabled).
+	 * 
+	 * @param {...*} args Arguments to log
+	 */
+	function debug() {
+		if (DEBUG && window.console && console.log) {
+			var args = Array.prototype.slice.call(arguments);
+			args.unshift('[StructureSync]');
+			console.log.apply(console, args);
+		}
+	}
 
 	/**
 	 * Extract parent categories from the form field.
@@ -344,18 +370,25 @@
 	/**
 	 * Update the preview based on current form values.
 	 * 
+	 * Makes an API call to compute the inheritance hierarchy for the given
+	 * category and its parents, then renders the results.
+	 * 
 	 * @param {string} categoryName Name of the virtual category being created
 	 * @param {Array} parentCategories Array of parent category names
 	 */
 	function updatePreview(categoryName, parentCategories) {
+		debug('updatePreview called:', categoryName, parentCategories);
+		
 		var $previewContainer = $('#ss-form-hierarchy-preview');
 		
 		if ($previewContainer.length === 0) {
+			debug('Preview container not found');
 			return;
 		}
 
 		// If no parents, show empty state
 		if (parentCategories.length === 0) {
+			debug('No parents selected, showing empty state');
 			$previewContainer.html(
 				'<p class="ss-hierarchy-empty">Add parent categories to see what this category will inherit.</p>'
 			);
@@ -363,18 +396,24 @@
 		}
 
 		// Show loading state
+		debug('Making API call for hierarchy data');
 		$previewContainer.html('<p class="ss-hierarchy-loading">Loading preview...</p>');
 
 		// Make API call
 		var api = new mw.Api();
-		api.get({
+		var apiParams = {
 			action: 'structuresync-hierarchy',
 			category: categoryName,
 			parents: parentCategories.join('|'),
 			format: 'json'
-		}).done(function (response) {
+		};
+		
+		api.get(apiParams).done(function (response) {
+			debug('API response received:', response);
+			
 			var data = response['structuresync-hierarchy'];
 			if (!data) {
+				console.error('[StructureSync] No data in API response');
 				$previewContainer.html('<p class="ss-hierarchy-error">Error loading preview.</p>');
 				return;
 			}
@@ -398,21 +437,37 @@
 			
 			$preview.append($treeSection, $propsSection);
 			$previewContainer.empty().append($preview);
+			
+			debug('Preview rendered successfully');
 
-		}).fail(function () {
+		}).fail(function (error) {
+			console.error('[StructureSync] API call failed:', error);
 			$previewContainer.html('<p class="ss-hierarchy-error">Error loading preview. Please check parent category names.</p>');
 		});
 	}
 
 	/**
 	 * Initialize form preview functionality.
+	 * 
+	 * Finds the preview container and parent category field, sets up event
+	 * listeners, and performs initial rendering if parents are pre-selected.
+	 * 
+	 * Initialization is skipped if:
+	 * - Preview container is not found
+	 * - Not on a PageForms edit page
+	 * - Parent category field cannot be detected
 	 */
 	function init() {
+		debug('Initializing form preview, URL:', window.location.href);
+		
 		// Check if we're on a form page with the preview container
 		var $previewContainer = $('#ss-form-hierarchy-preview');
 		if ($previewContainer.length === 0) {
+			debug('Preview container not found, skipping initialization');
 			return;
 		}
+		
+		debug('Preview container found');
 		
 		// Only initialize if we're on a PageForms edit page (not the form input page)
 		// PageForms adds specific markers to edit pages
@@ -423,113 +478,108 @@
 		);
 		
 		if (!isPageFormsEditPage) {
-			// Not on a PageForms edit page, don't initialize
-			if (window.console && console.log) {
-				console.log('[StructureSync] Not on PageForms edit page, skipping initialization');
-			}
+			debug('Not on PageForms edit page, skipping initialization');
 			return;
 		}
 
-		// Find the category name field (the page being created)
-		// Check URL for the category name in Special:FormEdit pages
+		// Determine category name from URL or form field
 		var categoryName = 'NewCategory';
 		var matches = window.location.pathname.match(/Category:([^\/]+)/);
 		if (matches && matches[1]) {
 			categoryName = decodeURIComponent(matches[1]);
 		}
 		
-		// Also try to find it in a field
 		var $categoryNameField = $('input[name="page_name"], input[name="category_name"], input[name="Category"]').first();
 		if ($categoryNameField.length > 0 && $categoryNameField.val()) {
 			categoryName = $categoryNameField.val();
 		}
 		
-		// Find parent category field
-		// PageForms tokens fields use Select2 multi-select for the tokens input type
+		// Find parent category field using data-parent-field attribute
 		var $parentField = null;
-		
-		// First, try to use the data attribute if specified
 		var parentFieldId = $previewContainer.data('parent-field');
 		
+		debug('Looking for parent field:', parentFieldId);
+		debug('Available select fields:', $('select').map(function() { return $(this).attr('name'); }).get());
+		
 		if (parentFieldId) {
-			// Try to find the select element with the field name
 			// PageForms tokens creates: <select name="Category[field_name][]" class="pfTokens">
-			$parentField = $('select[name*="[' + parentFieldId + ']"]').first();
+			// Try with brackets first (standard PageForms format)
+			var selector1 = 'select[name*="[' + parentFieldId + ']"]';
+			$parentField = $(selector1).first();
+			debug('Tried selector:', selector1, '- Found:', $parentField.length);
 			
-			// If not found, try without brackets
+			// If not found, try without brackets (edge case)
 			if ($parentField.length === 0) {
-				$parentField = $('select[name="' + parentFieldId + '"]').first();
+				var selector2 = 'select[name="' + parentFieldId + '"]';
+				$parentField = $(selector2).first();
+				debug('Tried selector:', selector2, '- Found:', $parentField.length);
 			}
 		}
 		
-		// Auto-detect if still not found
+		// Fallback: auto-detect any field with "parent" in the name
 		if (!$parentField || $parentField.length === 0) {
-			// Look for any select with "parent" in the name (likely a tokens field)
-			$parentField = $('select[name*="parent_category"]').first();
+			$parentField = $('select[name*="parent"]').first();
+			debug('Fallback detection - Found:', $parentField.length);
 		}
 
+		// Cannot proceed without parent field
 		if (!$parentField || $parentField.length === 0) {
-			$previewContainer.html('<p class="ss-hierarchy-empty">Could not find parent category field for preview.</p>');
+			var errorMsg = 'Could not find parent category field for preview.';
+			if (parentFieldId) {
+				errorMsg += ' Looking for field: ' + parentFieldId;
+			}
+			$previewContainer.html('<p class="ss-hierarchy-empty">' + errorMsg + '</p>');
+			console.error('[StructureSync] Parent field not found, preview disabled');
 			return;
 		}
 
-		// Debug: Log initialization
-		if (window.console && console.log) {
-			console.log('[StructureSync] Form preview initialized for category:', categoryName);
-		}
+		debug('Initialized for category:', categoryName, '- Parent field:', $parentField.attr('name'));
 
-		// Find the free text field for parent category membership
+		// Find the free text field for automatic category tag injection
 		var $freeTextField = $('input[name="pf_free_text"], textarea[name="pf_free_text"]').first();
-		
-		// Debug: Log free text field
-		if (window.console && console.log) {
-			console.log('[StructureSync] Free text field found:', $freeTextField.length);
-		}
+		debug('Free text field found:', $freeTextField.length);
 		
 		/**
-		 * Update free text field with category membership links
+		 * Update free text field with category membership tags.
+		 * 
+		 * Automatically populates the free text field with [[Category:...]] tags
+		 * based on the selected parent categories, ensuring pages are properly
+		 * categorized when saved.
 		 */
 		function updateFreeText() {
 			if ($freeTextField.length === 0) {
-				if (window.console && console.log) {
-					console.log('[StructureSync] No free text field found, skipping category link update');
-				}
+				debug('No free text field, skipping category tag update');
 				return;
 			}
 			
 			var parents = extractParentCategories($parentField);
 			if (parents.length === 0) {
 				$freeTextField.val('');
-				if (window.console && console.log) {
-					console.log('[StructureSync] Cleared free text field (no parents)');
-				}
+				debug('Cleared free text field (no parents)');
 				return;
 			}
 			
 			// Build category links - one per line for readability
 			var categoryLinks = parents.map(function(parent) {
-				// Remove "Category:" prefix if present, then add it back
 				var cleanName = parent.replace(/^Category:\s*/i, '');
 				return '[[Category:' + cleanName + ']]';
 			});
 			
 			var linkText = categoryLinks.join('\n');
 			$freeTextField.val(linkText);
-			
-			if (window.console && console.log) {
-				console.log('[StructureSync] Updated free text field with:', linkText);
-			}
+			debug('Updated free text field:', linkText);
 		}
 
-		// Watch for changes to the parent field
-		// For Select2 fields, we listen to 'change' events
+		// Watch for changes to the parent field (debounced)
 		$parentField.on('change', function () {
+			debug('Parent field changed:', $parentField.val());
+			
 			// Clear any pending update
 			if (updateTimer !== null) {
 				clearTimeout(updateTimer);
 			}
 
-			// Schedule update
+			// Schedule debounced update
 			updateTimer = setTimeout(function () {
 				var currentCategory = categoryName;
 				if ($categoryNameField.length > 0 && $categoryNameField.val()) {
@@ -537,6 +587,7 @@
 				}
 				
 				var parents = extractParentCategories($parentField);
+				debug('Updating preview - Category:', currentCategory, 'Parents:', parents);
 				
 				// Update both the preview and the free text field
 				updatePreview(currentCategory, parents);
@@ -544,7 +595,7 @@
 			}, UPDATE_DELAY);
 		});
 
-		// Also watch the category name field if present
+		// Also watch the category name field if it exists (for page renames)
 		if ($categoryNameField.length > 0) {
 			$categoryNameField.on('input change keyup', function () {
 				if (updateTimer !== null) {
@@ -559,9 +610,10 @@
 			});
 		}
 		
-		// Do an initial render if there are already parent categories selected
+		// Perform initial render if parent categories are already selected
 		var initialParents = extractParentCategories($parentField);
 		if (initialParents.length > 0) {
+			debug('Initial parents found, rendering preview');
 			updatePreview(categoryName, initialParents);
 			updateFreeText();
 		} else {
@@ -572,6 +624,7 @@
 
 	// Initialize when DOM is ready
 	$(function () {
+		debug('DOM ready, initializing form preview');
 		init();
 	});
 

@@ -103,6 +103,7 @@ class CategoryHierarchyService {
             'rootCategory'        => $fullName,
             'nodes'               => [],
             'inheritedProperties' => [],
+            'inheritedSubgroups'  => [],
         ];
 
         $allCategories = $this->categoryStore->getAllCategories();
@@ -134,6 +135,12 @@ class CategoryHierarchyService {
 
         // Extract inherited properties
         $result['inheritedProperties'] = $this->extractVirtualInheritedProperties(
+            $parents,
+            $allCategories
+        );
+
+        // Extract inherited subgroups
+        $result['inheritedSubgroups'] = $this->extractVirtualInheritedSubgroups(
             $parents,
             $allCategories
         );
@@ -319,6 +326,65 @@ class CategoryHierarchyService {
                             'required'       => false,
                         ];
                         $seen[$p] = true;
+                    }
+                }
+            }
+        }
+
+        return $output;
+    }
+
+    /**
+     * Extract inherited subgroups for virtual category (form preview).
+     * 
+     * Similar to extractVirtualInheritedProperties but for subgroups.
+     * 
+     * @param array $parents Array of parent category names (no namespace)
+     * @param array $all All category models
+     * @return array Array of subgroup entries with subgroupTitle, sourceCategory, required
+     */
+    private function extractVirtualInheritedSubgroups(
+        array $parents,
+        array $all
+    ): array {
+
+        if (empty($parents)) {
+            return [];
+        }
+
+        $output = [];
+        $seen   = [];
+
+        $resolver = new InheritanceResolver($all);
+
+        foreach ($parents as $parent) {
+            foreach ($resolver->getAncestors($parent) as $ancestor) {
+                $model = $all[$ancestor] ?? null;
+                if (!$model) {
+                    continue;
+                }
+
+                $source = "Category:$ancestor";
+
+                foreach ($model->getRequiredSubgroups() as $sg) {
+                    if (!isset($seen[$sg])) {
+                        $output[] = [
+                            'subgroupTitle'  => "Subobject:$sg",
+                            'sourceCategory' => $source,
+                            'required'       => 1,
+                        ];
+                        $seen[$sg] = true;
+                    }
+                }
+
+                foreach ($model->getOptionalSubgroups() as $sg) {
+                    if (!isset($seen[$sg])) {
+                        $output[] = [
+                            'subgroupTitle'  => "Subobject:$sg",
+                            'sourceCategory' => $source,
+                            'required'       => 0,
+                        ];
+                        $seen[$sg] = true;
                     }
                 }
             }
