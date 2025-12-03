@@ -142,6 +142,7 @@ class WikiCategoryStore {
 
         $header = $this->fetchList($semanticData, 'Has display header property', 'property');
         $sections = $this->fetchDisplaySections($semanticData);
+        $format = $this->fetchOne($semanticData, 'Has display format');
 
         $out = [];
         if ($header !== []) {
@@ -149,6 +150,9 @@ class WikiCategoryStore {
         }
         if ($sections !== []) {
             $out['sections'] = $sections;
+        }
+        if ($format !== null) {
+            $out['format'] = $format;
         }
 
         return $out;
@@ -266,6 +270,11 @@ class WikiCategoryStore {
         // Header properties
         foreach ($cat->getDisplayHeaderProperties() as $h) {
             $lines[] = "[[Has display header property::Property:$h]]";
+        }
+
+        // Display format
+        if ($cat->getDisplayFormat() !== null) {
+            $lines[] = '[[Has display format::' . $cat->getDisplayFormat() . ']]';
         }
 
         // Required/optional properties

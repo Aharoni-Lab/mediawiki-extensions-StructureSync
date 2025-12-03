@@ -10,6 +10,19 @@ Welcome to the StructureSync documentation!
 
 ## Features
 
+### Schema Definition
+
+- **[Supported Properties](SUPPORTED_PROPERTIES.md)** - Complete reference for all semantic properties
+  - Category properties (inheritance, display, properties, subobjects)
+  - Property properties (datatypes, constraints, display configuration)
+  - Subobject properties (metadata, required/optional properties)
+  - Examples and best practices
+
+- **[Display Properties](DISPLAY_PROPERTIES.md)** - Guide to property display configuration
+  - Custom display templates
+  - Display patterns and types
+  - Rendering priority order
+
 ### Category Hierarchy Visualization
 
 - **[Hierarchy Visualization Guide](hierarchy-visualization.md)** - Complete guide to visualizing category inheritance

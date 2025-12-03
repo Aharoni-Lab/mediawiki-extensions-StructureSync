@@ -204,6 +204,10 @@ class CategoryModel {
         return $this->displayConfig['header'] ?? [];
     }
 
+    public function getDisplayFormat(): ?string {
+        return $this->displayConfig['format'] ?? null;
+    }
+
     public function getDisplaySections(): array {
         return $this->displayConfig['sections'] ?? [];
     }
@@ -305,6 +309,10 @@ class CategoryModel {
 
         if (isset($child['header'])) {
             $merged['header'] = self::normalizeList($child['header']);
+        }
+
+        if (isset($child['format'])) {
+            $merged['format'] = trim((string)$child['format']);
         }
 
         if (isset($child['sections'])) {

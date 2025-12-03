@@ -82,16 +82,14 @@ class DisplayRenderer {
 	 */
 	public function renderAllSections( string $categoryName, PPFrame $frame ): string {
 		$spec = $this->specBuilder->buildSpec( $categoryName );
-		$html = [];
+		$format = strtolower( $spec['format'] ?? 'sections' );
 
-		foreach ( $spec['sections'] as $section ) {
-			$rendered = $this->renderSectionHtml( $section, $frame );
-			if ( $rendered !== '' ) {
-				$html[] = $rendered;
-			}
-		}
-
-		return implode( "\n", $html );
+		return match ( $format ) {
+			'table'        => $this->renderAsTable( $spec, $frame ),
+			'side infobox' => $this->renderAsInfobox( $spec, $frame ),
+			'plain text'   => $this->renderAsPlainText( $spec, $frame ),
+			default        => $this->renderAsSections( $spec, $frame ),
+		};
 	}
 
 	/**
@@ -109,6 +107,7 @@ class DisplayRenderer {
 
 		foreach ( $spec['sections'] as $section ) {
 			if ( strcasecmp( $section['name'], $sectionName ) === 0 ) {
+				// Always render individual sections using the default section style
 				return $this->renderSectionHtml( $section, $frame );
 			}
 		}
@@ -117,21 +116,118 @@ class DisplayRenderer {
 	}
 
 	/* =====================================================================
-	 * SECTION RENDERING
+	 * FORMAT RENDERERS
+	 * ===================================================================== */
+
+	private function renderAsSections( array $spec, PPFrame $frame ): string {
+		$html = [];
+		foreach ( $spec['sections'] as $section ) {
+			$rendered = $this->renderSectionHtml( $section, $frame );
+			if ( $rendered !== '' ) {
+				$html[] = $rendered;
+			}
+		}
+		return implode( "\n", $html );
+	}
+
+	private function renderAsTable( array $spec, PPFrame $frame ): string {
+		$rows = [];
+		foreach ( $spec['sections'] as $section ) {
+			$props = $this->resolveProperties( $section['properties'], $frame );
+			if ( empty( $props ) ) {
+				continue;
+			}
+
+			// Section header
+			$rows[] = '<tr><th colspan="2" class="ss-table-section" style="background:#eee; text-align:left;">' .
+			          htmlspecialchars( $section['name'] ) . '</th></tr>';
+
+			foreach ( $props as $p ) {
+				if ( $p['isCustom'] ) {
+					$rows[] = '<tr><td colspan="2" class="ss-table-custom">' . $p['html'] . '</td></tr>';
+				} else {
+					$rows[] = '<tr><th class="ss-table-label" style="text-align:right; vertical-align:top; width:30%;">' .
+					          htmlspecialchars( $p['label'] ) . '</th><td class="ss-table-value">' . $p['html'] . '</td></tr>';
+				}
+			}
+		}
+
+		if ( empty( $rows ) ) {
+			return '';
+		}
+
+		return '<table class="wikitable ss-table" style="width:100%;">' . implode( "\n", $rows ) . '</table>';
+	}
+
+	private function renderAsInfobox( array $spec, PPFrame $frame ): string {
+		$rows = [];
+		foreach ( $spec['sections'] as $section ) {
+			$props = $this->resolveProperties( $section['properties'], $frame );
+			if ( empty( $props ) ) {
+				continue;
+			}
+
+			// Section header
+			$rows[] = '<tr><th colspan="2" class="ss-infobox-section" style="background:#eee; text-align:center;">' .
+			          htmlspecialchars( $section['name'] ) . '</th></tr>';
+
+			foreach ( $props as $p ) {
+				if ( $p['isCustom'] ) {
+					$rows[] = '<tr><td colspan="2" class="ss-infobox-custom">' . $p['html'] . '</td></tr>';
+				} else {
+					$rows[] = '<tr><th class="ss-infobox-label" style="text-align:left;">' .
+					          htmlspecialchars( $p['label'] ) . '</th><td class="ss-infobox-value">' . $p['html'] . '</td></tr>';
+				}
+			}
+		}
+
+		if ( empty( $rows ) ) {
+			return '';
+		}
+
+		return '<table class="infobox ss-infobox" style="float:right; clear:right; width:300px; border:1px solid #a2a9b1; border-spacing:2px; background-color:#f8f9fa; margin:0.5em 0 0.5em 1em; padding:0.2em;">' .
+		       implode( "\n", $rows ) . '</table>';
+	}
+
+	private function renderAsPlainText( array $spec, PPFrame $frame ): string {
+		$lines = [];
+		foreach ( $spec['sections'] as $section ) {
+			$props = $this->resolveProperties( $section['properties'], $frame );
+			if ( empty( $props ) ) {
+				continue;
+			}
+
+			$lines[] = '<div class="ss-plain-section"><strong>' . htmlspecialchars( $section['name'] ) . '</strong></div>';
+			$lines[] = '<ul>';
+
+			foreach ( $props as $p ) {
+				if ( $p['isCustom'] ) {
+					$lines[] = '<li>' . $p['html'] . '</li>';
+				} else {
+					$lines[] = '<li><strong>' . htmlspecialchars( $p['label'] ) . ':</strong> ' . $p['html'] . '</li>';
+				}
+			}
+			$lines[] = '</ul>';
+		}
+
+		return implode( "\n", $lines );
+	}
+
+	/* =====================================================================
+	 * SECTION RENDERING HELPERS
 	 * ===================================================================== */
 
 	/**
-	 * Render a single section with its properties.
+	 * Resolve properties for a section into renderable data.
 	 *
-	 * @param array $section Section specification with 'name' and 'properties' keys
-	 * @param PPFrame $frame Parser frame containing template parameters
-	 * @return string HTML for the section, or empty string if no properties have values
+	 * @param array $properties List of property names
+	 * @param PPFrame $frame
+	 * @return array List of ['label' => string, 'html' => string, 'isCustom' => bool]
 	 */
-	private function renderSectionHtml( array $section, PPFrame $frame ): string {
-		$rows = [];
-		$hasValue = false;
+	private function resolveProperties( array $properties, PPFrame $frame ): array {
+		$data = [];
 
-		foreach ( $section['properties'] as $propertyName ) {
+		foreach ( $properties as $propertyName ) {
 			// Convert property name to template parameter (e.g., "Has full name" -> "full_name")
 			$param = NamingHelper::propertyToParameter( $propertyName );
 			$rawValue = trim( $frame->getArgument( $param ) );
@@ -139,8 +235,6 @@ class DisplayRenderer {
 			if ( $rawValue === '' ) {
 				continue;
 			}
-
-			$hasValue = true;
 
 			// Render the property value with display configuration
 			$htmlValue = $this->renderValue(
@@ -155,18 +249,39 @@ class DisplayRenderer {
 			$label = $property?->getLabel() ??
 			         NamingHelper::generatePropertyLabel( $propertyName );
 
-			// Properties with direct display templates provide their own labels/styling
-			// Properties with patterns/types use the standard label: value format
-			if ( $property && $property->getDisplayTemplate() !== null ) {
-				$rows[] = $this->wrapCustomDisplay( $htmlValue );
-			} else {
-				$rows[] = $this->wrapRow( $label, $htmlValue );
-			}
+			$isCustom = ( $property && $property->getDisplayTemplate() !== null );
+
+			$data[] = [
+				'label'    => $label,
+				'html'     => $htmlValue,
+				'isCustom' => $isCustom,
+			];
 		}
 
-		// Don't render empty sections
-		if ( !$hasValue ) {
+		return $data;
+	}
+
+	/**
+	 * Render a single section with its properties (Default/Sections format).
+	 *
+	 * @param array $section Section specification with 'name' and 'properties' keys
+	 * @param PPFrame $frame Parser frame containing template parameters
+	 * @return string HTML for the section, or empty string if no properties have values
+	 */
+	private function renderSectionHtml( array $section, PPFrame $frame ): string {
+		$props = $this->resolveProperties( $section['properties'], $frame );
+
+		if ( empty( $props ) ) {
 			return '';
+		}
+
+		$rows = [];
+		foreach ( $props as $p ) {
+			if ( $p['isCustom'] ) {
+				$rows[] = $this->wrapCustomDisplay( $p['html'] );
+			} else {
+				$rows[] = $this->wrapRow( $p['label'], $p['html'] );
+			}
 		}
 
 		return $this->wrapSection(

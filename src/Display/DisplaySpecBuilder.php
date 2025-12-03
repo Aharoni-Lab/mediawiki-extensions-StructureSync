@@ -136,11 +136,16 @@ class DisplaySpecBuilder {
 		wfDebugLog('structuresync', "DisplaySpecBuilder: Built chain of " . count($chain) . " categories");
 
 		$mergedSections = [];
+		$format = null;
 
 		// 2. Merge sections across the chain
 		foreach ( $chain as $category ) {
 			if ( !$category instanceof CategoryModel ) {
 				continue;
+			}
+
+			if ( $category->getDisplayFormat() !== null ) {
+				$format = $category->getDisplayFormat();
 			}
 
 			$catSections = $category->getDisplaySections();
@@ -298,6 +303,7 @@ class DisplaySpecBuilder {
 
 		return [
 			'sections'  => $mergedSections,
+			'format'    => $format,
 			'subobjects' => [
 				'required' => $requiredSubobjects,
 				'optional' => $optionalSubobjects,
