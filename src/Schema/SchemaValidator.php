@@ -295,15 +295,15 @@ class SchemaValidator {
 			$warnings = array_merge( $warnings, $propResult['warnings'] );
 		}
 
-		// --- subgroups ------------------------------------------------------
-		if ( isset( $categoryData['subgroups'] ) ) {
-			$subgroupResult = $this->validateCategorySubgroups(
+		// --- subobjects ------------------------------------------------------
+		if ( isset( $categoryData['subobjects'] ) ) {
+			$subobjectResult = $this->validateCategorySubobjects(
 				$categoryName,
-				$categoryData['subgroups'],
+				$categoryData['subobjects'],
 				$allSubobjects
 			);
-			$errors = array_merge( $errors, $subgroupResult['errors'] );
-			$warnings = array_merge( $warnings, $subgroupResult['warnings'] );
+			$errors = array_merge( $errors, $subobjectResult['errors'] );
+			$warnings = array_merge( $warnings, $subobjectResult['warnings'] );
 		}
 
 		// --- display config -----------------------------------------------
@@ -331,22 +331,22 @@ class SchemaValidator {
 		return [ 'errors' => $errors, 'warnings' => $warnings ];
 	}
 
-	private function validateCategorySubgroups(
+	private function validateCategorySubobjects(
 		string $categoryName,
-		array $subgroupLists,
+		array $subobjectLists,
 		array $allSubobjects
 	): array {
 		$errors = [];
 		$warnings = [];
 
-		$required = $subgroupLists['required'] ?? [];
-		$optional = $subgroupLists['optional'] ?? [];
+		$required = $subobjectLists['required'] ?? [];
+		$optional = $subobjectLists['optional'] ?? [];
 
 		if ( !is_array( $required ) ) {
 			$errors[] = $this->formatError(
 				'category',
 				$categoryName,
-				'subgroups.required must be an array',
+				'subobjects.required must be an array',
 				'Use an array like ["PublicationAuthor", ...]'
 			);
 		}
@@ -355,7 +355,7 @@ class SchemaValidator {
 			$errors[] = $this->formatError(
 				'category',
 				$categoryName,
-				'subgroups.optional must be an array',
+				'subobjects.optional must be an array',
 				'Use an array like ["FundingLine", ...]'
 			);
 		}
@@ -371,29 +371,29 @@ class SchemaValidator {
 			$errors[] = $this->formatError(
 				'category',
 				$categoryName,
-				'Subgroups cannot be both required and optional: ' . implode( ', ', $duplicates ),
+				'Subobjects cannot be both required and optional: ' . implode( ', ', $duplicates ),
 				'Remove duplicates from either list'
 			);
 		}
 
-		foreach ( $required as $subgroupName ) {
-			if ( !isset( $allSubobjects[$subgroupName] ) ) {
+		foreach ( $required as $subobjectName ) {
+			if ( !isset( $allSubobjects[$subobjectName] ) ) {
 				$errors[] = $this->formatError(
 					'category',
 					$categoryName,
-					"required subgroup '$subgroupName' is not defined in schema",
-					"Add '$subgroupName' to the subobjects section or remove it from this category"
+					"required subobject '$subobjectName' is not defined in schema",
+					"Add '$subobjectName' to the subobjects section or remove it from this category"
 				);
 			}
 		}
 
-		foreach ( $optional as $subgroupName ) {
-			if ( !isset( $allSubobjects[$subgroupName] ) ) {
+		foreach ( $optional as $subobjectName ) {
+			if ( !isset( $allSubobjects[$subobjectName] ) ) {
 				$errors[] = $this->formatError(
 					'category',
 					$categoryName,
-					"optional subgroup '$subgroupName' is not defined in schema",
-					"Add '$subgroupName' to the subobjects section or remove it from this category"
+					"optional subobject '$subobjectName' is not defined in schema",
+					"Add '$subobjectName' to the subobjects section or remove it from this category"
 				);
 			}
 		}

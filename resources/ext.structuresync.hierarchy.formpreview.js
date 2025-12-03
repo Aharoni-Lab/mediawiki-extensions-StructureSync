@@ -7,7 +7,7 @@
  * - Watches the parent category field for changes
  * - Makes API calls to compute inheritance hierarchy
  * - Displays a tree visualization of parent/child relationships
- * - Shows inherited properties and subgroups
+ * - Shows inherited properties and subobjects
  * - Auto-populates free text field with category membership tags
  * 
  * Architecture:
@@ -325,33 +325,33 @@
 			$propContainer.append($optionalSection);
 		}
 
-		// Render subgroup summary
-		var subgroups = hierarchyData.inheritedSubgroups || [];
-		var $subgroupSection = $('<div>').addClass('ss-prop-type-section');
-		$subgroupSection.append(
-			$('<h4>').addClass('ss-prop-type-heading').text('Subgroups (' + subgroups.length + ')')
+		// Render subobject summary
+		var subobjects = hierarchyData.inheritedSubobjects || [];
+		var $subobjectSection = $('<div>').addClass('ss-prop-type-section');
+		$subobjectSection.append(
+			$('<h4>').addClass('ss-prop-type-heading').text('Subobjects (' + subobjects.length + ')')
 		);
 
-		if (subgroups.length === 0) {
-			$subgroupSection.append(
-				$('<p>').addClass('ss-hierarchy-empty').text('No subgroups defined.')
+		if (subobjects.length === 0) {
+			$subobjectSection.append(
+				$('<p>').addClass('ss-hierarchy-empty').text('No subobjects defined.')
 			);
 		} else {
-			var $subgroupList = $('<ul>').addClass('ss-prop-list ss-prop-list-by-type');
-			subgroups.forEach(function (entry) {
+			var $subobjectList = $('<ul>').addClass('ss-prop-list ss-prop-list-by-type');
+			subobjects.forEach(function (entry) {
 				var $li = $('<li>').addClass(entry.required ? 'ss-prop-required' : 'ss-prop-optional');
-				var subgroupTitle = entry.subgroupTitle || '';
-				if (subgroupTitle) {
-					var href = mw.util.getUrl(subgroupTitle);
-					var displayName = subgroupTitle.replace(/^Subobject:/, '');
+				var subobjectTitle = entry.subobjectTitle || '';
+				if (subobjectTitle) {
+					var href = mw.util.getUrl(subobjectTitle);
+					var displayName = subobjectTitle.replace(/^Subobject:/, '');
 					$li.append(
 						$('<a>')
 							.attr('href', href)
-							.attr('title', subgroupTitle)
+							.attr('title', subobjectTitle)
 							.text(displayName)
 					);
 				} else {
-					$li.text('(unnamed subgroup)');
+					$li.text('(unnamed subobject)');
 				}
 				$li.append(
 					' ',
@@ -359,12 +359,12 @@
 						.addClass('ss-prop-badge')
 						.text(entry.required ? 'required' : 'optional')
 				);
-				$subgroupList.append($li);
+				$subobjectList.append($li);
 			});
-			$subgroupSection.append($subgroupList);
+			$subobjectSection.append($subobjectList);
 		}
 
-		$container.empty().append($propContainer, $subgroupSection);
+		$container.empty().append($propContainer, $subobjectSection);
 	}
 
 	/**

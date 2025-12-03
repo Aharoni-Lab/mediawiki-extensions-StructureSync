@@ -146,7 +146,7 @@ class TemplateGenerator {
      *
      * Format:
      *   {{#subobject:
-     *      | Has subgroup type = Subobject:<Name>
+     *      | Has subobject type = Subobject:<Name>
      *      | Property = {{{param}}}
      *   }}
      */
@@ -161,7 +161,7 @@ class TemplateGenerator {
         $out[] = '</noinclude><includeonly>';
 
         $out[] = '{{#subobject:';
-        $out[] = ' | Has subgroup type = Subobject:' . $name;
+        $out[] = ' | Has subobject type = Subobject:' . $name;
 
         $props = array_merge(
             $sub->getRequiredProperties(),
@@ -213,12 +213,12 @@ class TemplateGenerator {
      * ===================================================================== */
 
     /**
-     * Build per-subgroup display tables inside the dispatcher template.
+     * Build per-subobject display tables inside the dispatcher template.
      */
     private function generateSubobjectDisplaySections( CategoryModel $category ): array {
 
-        $required = $category->getRequiredSubgroups();
-        $optional = $category->getOptionalSubgroups();
+        $required = $category->getRequiredSubobjects();
+        $optional = $category->getOptionalSubobjects();
 
         $all = array_unique( array_merge( $required, $optional ) );
         if (empty($all)) {
@@ -253,7 +253,7 @@ class TemplateGenerator {
             }
 
             /* SMW #ask invocation */
-            $out[] = '{{#ask: [[-Has subobject::{{FULLPAGENAME}}]] [[Has subgroup type::Subobject:' . $this->s($subName) . ']]';
+            $out[] = '{{#ask: [[-Has subobject::{{FULLPAGENAME}}]] [[Has subobject type::Subobject:' . $this->s($subName) . ']]';
 
             foreach ($props as $p) {
                 $out[] = ' | ?' . $this->s($p);
@@ -299,8 +299,8 @@ class TemplateGenerator {
 
         /* Subobject templates */
         $subs = array_unique(array_merge(
-            $category->getRequiredSubgroups(),
-            $category->getOptionalSubgroups()
+            $category->getRequiredSubobjects(),
+            $category->getOptionalSubobjects()
         ));
 
         foreach ($subs as $subName) {

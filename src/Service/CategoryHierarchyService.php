@@ -12,7 +12,7 @@ use MediaWiki\Extension\StructureSync\Store\WikiCategoryStore;
  * Builds structured hierarchy data describing:
  *   - Category ancestry (nodes + parents)
  *   - Inherited properties (required/optional, source category)
- *   - Inherited subgroups (required/optional, source category)
+ *   - Inherited subobjects (required/optional, source category)
  *
  * This data feeds:
  *   - The hierarchy API for frontend visualization
@@ -46,7 +46,7 @@ class CategoryHierarchyService {
             'rootCategory'        => $fullName,
             'nodes'               => [],
             'inheritedProperties' => [],
-            'inheritedSubgroups'  => [],
+            'inheritedSubobjects'  => [],
         ];
 
         $allCategories = $this->categoryStore->getAllCategories();
@@ -75,7 +75,7 @@ class CategoryHierarchyService {
             $allCategories
         );
 
-        $result['inheritedSubgroups'] = $this->extractInheritedSubgroups(
+        $result['inheritedSubobjects'] = $this->extractInheritedSubobjects(
             $categoryName,
             $resolver,
             $allCategories
@@ -103,7 +103,7 @@ class CategoryHierarchyService {
             'rootCategory'        => $fullName,
             'nodes'               => [],
             'inheritedProperties' => [],
-            'inheritedSubgroups'  => [],
+            'inheritedSubobjects'  => [],
         ];
 
         $allCategories = $this->categoryStore->getAllCategories();
@@ -139,8 +139,8 @@ class CategoryHierarchyService {
             $allCategories
         );
 
-        // Extract inherited subgroups
-        $result['inheritedSubgroups'] = $this->extractVirtualInheritedSubgroups(
+        // Extract inherited subobjects
+        $result['inheritedSubobjects'] = $this->extractVirtualInheritedSubobjects(
             $parents,
             $allCategories
         );
@@ -238,7 +238,7 @@ class CategoryHierarchyService {
      * INTERNAL: INHERITED SUBGROUPS
      * ===================================================================== */
 
-    private function extractInheritedSubgroups(
+    private function extractInheritedSubobjects(
         string $name,
         InheritanceResolver $resolver,
         array $all
@@ -254,10 +254,10 @@ class CategoryHierarchyService {
 
             $source = "Category:$ancestor";
 
-            foreach ($model->getRequiredSubgroups() as $sg) {
+            foreach ($model->getRequiredSubobjects() as $sg) {
                 if (!isset($seen[$sg])) {
                     $output[] = [
-                        'subgroupTitle'  => "Subobject:$sg",
+                        'subobjectTitle'  => "Subobject:$sg",
                         'sourceCategory' => $source,
                         'required'       => 1,
                     ];
@@ -265,10 +265,10 @@ class CategoryHierarchyService {
                 }
             }
 
-            foreach ($model->getOptionalSubgroups() as $sg) {
+            foreach ($model->getOptionalSubobjects() as $sg) {
                 if (!isset($seen[$sg])) {
                     $output[] = [
-                        'subgroupTitle'  => "Subobject:$sg",
+                        'subobjectTitle'  => "Subobject:$sg",
                         'sourceCategory' => $source,
                         'required'       => 0,
                     ];
@@ -335,15 +335,15 @@ class CategoryHierarchyService {
     }
 
     /**
-     * Extract inherited subgroups for virtual category (form preview).
+     * Extract inherited subobjects for virtual category (form preview).
      * 
-     * Similar to extractVirtualInheritedProperties but for subgroups.
+     * Similar to extractVirtualInheritedProperties but for subobjects.
      * 
      * @param array $parents Array of parent category names (no namespace)
      * @param array $all All category models
-     * @return array Array of subgroup entries with subgroupTitle, sourceCategory, required
+     * @return array Array of subobject entries with subobjectTitle, sourceCategory, required
      */
-    private function extractVirtualInheritedSubgroups(
+    private function extractVirtualInheritedSubobjects(
         array $parents,
         array $all
     ): array {
@@ -366,10 +366,10 @@ class CategoryHierarchyService {
 
                 $source = "Category:$ancestor";
 
-                foreach ($model->getRequiredSubgroups() as $sg) {
+                foreach ($model->getRequiredSubobjects() as $sg) {
                     if (!isset($seen[$sg])) {
                         $output[] = [
-                            'subgroupTitle'  => "Subobject:$sg",
+                            'subobjectTitle'  => "Subobject:$sg",
                             'sourceCategory' => $source,
                             'required'       => 1,
                         ];
@@ -377,10 +377,10 @@ class CategoryHierarchyService {
                     }
                 }
 
-                foreach ($model->getOptionalSubgroups() as $sg) {
+                foreach ($model->getOptionalSubobjects() as $sg) {
                     if (!isset($seen[$sg])) {
                         $output[] = [
-                            'subgroupTitle'  => "Subobject:$sg",
+                            'subobjectTitle'  => "Subobject:$sg",
                             'sourceCategory' => $source,
                             'required'       => 0,
                         ];

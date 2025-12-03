@@ -179,19 +179,19 @@ class SchemaComparer {
             ];
         }
 
-        // subgroups (required/optional)
-        $sgA = $a['subgroups'] ?? [];
-        $sgB = $b['subgroups'] ?? [];
+        // subobjects (required/optional)
+        $sgA = $a['subobjects'] ?? [];
+        $sgB = $b['subobjects'] ?? [];
 
         if ( $this->arraysDiffer( $sgA['required'] ?? [], $sgB['required'] ?? [] ) ) {
-            $diff['subgroups']['required'] = [
+            $diff['subobjects']['required'] = [
                 'old' => $sgB['required'] ?? [],
                 'new' => $sgA['required'] ?? [],
             ];
         }
 
         if ( $this->arraysDiffer( $sgA['optional'] ?? [], $sgB['optional'] ?? [] ) ) {
-            $diff['subgroups']['optional'] = [
+            $diff['subobjects']['optional'] = [
                 'old' => $sgB['optional'] ?? [],
                 'new' => $sgA['optional'] ?? [],
             ];

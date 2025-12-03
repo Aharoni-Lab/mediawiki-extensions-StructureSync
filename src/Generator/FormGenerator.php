@@ -31,7 +31,7 @@ use MediaWiki\Extension\StructureSync\Util\NamingHelper;
  * 4. Binds the preview to the parent category form field
  *
  * The preview updates in real-time as users select parent categories,
- * displaying the inheritance tree and inherited properties/subgroups.
+ * displaying the inheritance tree and inherited properties/subobjects.
  */
 class FormGenerator {
 
@@ -229,8 +229,8 @@ class FormGenerator {
      */
     private function generateSubobjectSections(CategoryModel $category): array {
 
-        $required = $category->getRequiredSubgroups();
-        $optional = $category->getOptionalSubgroups();
+        $required = $category->getRequiredSubobjects();
+        $optional = $category->getOptionalSubobjects();
 
         $all = [];
         foreach ($required as $n) { $all[$n] = true; }

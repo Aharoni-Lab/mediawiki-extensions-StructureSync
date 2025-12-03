@@ -19,7 +19,7 @@ use InvalidArgumentException;
  *     required: string[]
  *     optional: string[]
  *
- *   subgroups:
+ *   subobjects:
  *     required: string[]
  *     optional: string[]
  *
@@ -49,8 +49,8 @@ class CategoryModel {
     private array $requiredProperties;
     private array $optionalProperties;
 
-    private array $requiredSubgroups;
-    private array $optionalSubgroups;
+    private array $requiredSubobjects;
+    private array $optionalSubobjects;
 
     private array $displayConfig;
     private array $formConfig;
@@ -105,20 +105,20 @@ class CategoryModel {
             );
         }
 
-        /* -------------------- Subgroups -------------------- */
+        /* -------------------- Subobjects -------------------- */
 
-        $subs = $data['subgroups'] ?? [];
+        $subs = $data['subobjects'] ?? [];
         if (!is_array($subs)) {
-            throw new InvalidArgumentException("Category '{$name}': 'subgroups' must be an array.");
+            throw new InvalidArgumentException("Category '{$name}': 'subobjects' must be an array.");
         }
 
-        $this->requiredSubgroups = self::normalizeList($subs['required'] ?? []);
-        $this->optionalSubgroups = self::normalizeList($subs['optional'] ?? []);
+        $this->requiredSubobjects = self::normalizeList($subs['required'] ?? []);
+        $this->optionalSubobjects = self::normalizeList($subs['optional'] ?? []);
 
-        $dupSG = array_intersect($this->requiredSubgroups, $this->optionalSubgroups);
+        $dupSG = array_intersect($this->requiredSubobjects, $this->optionalSubobjects);
         if ($dupSG !== []) {
             throw new InvalidArgumentException(
-                "Category '{$name}' has subgroups listed as both required and optional: " .
+                "Category '{$name}' has subobjects listed as both required and optional: " .
                 implode(', ', $dupSG)
             );
         }
@@ -180,18 +180,18 @@ class CategoryModel {
         ));
     }
 
-    /* -------------------- Subgroups -------------------- */
+    /* -------------------- Subobjects -------------------- */
 
-    public function getRequiredSubgroups(): array {
-        return $this->requiredSubgroups;
+    public function getRequiredSubobjects(): array {
+        return $this->requiredSubobjects;
     }
 
-    public function getOptionalSubgroups(): array {
-        return $this->optionalSubgroups;
+    public function getOptionalSubobjects(): array {
+        return $this->optionalSubobjects;
     }
 
-    public function hasSubgroups(): bool {
-        return $this->requiredSubgroups !== [] || $this->optionalSubgroups !== [];
+    public function hasSubobjects(): bool {
+        return $this->requiredSubobjects !== [] || $this->optionalSubobjects !== [];
     }
 
     /* -------------------- Display + Forms -------------------- */
@@ -237,17 +237,17 @@ class CategoryModel {
             $mergedRequired
         ));
 
-        /* -------------------- Subgroups -------------------- */
+        /* -------------------- Subobjects -------------------- */
 
         $mergedRequiredSG = array_values(array_unique(array_merge(
-            $parent->getRequiredSubgroups(),
-            $this->requiredSubgroups
+            $parent->getRequiredSubobjects(),
+            $this->requiredSubobjects
         )));
 
         $mergedOptionalSG = array_values(array_diff(
             array_unique(array_merge(
-                $parent->getOptionalSubgroups(),
-                $this->optionalSubgroups
+                $parent->getOptionalSubobjects(),
+                $this->optionalSubobjects
             )),
             $mergedRequiredSG
         ));
@@ -279,7 +279,7 @@ class CategoryModel {
                     'required' => $mergedRequired,
                     'optional' => $mergedOptional,
                 ],
-                'subgroups' => [
+                'subobjects' => [
                     'required' => $mergedRequiredSG,
                     'optional' => $mergedOptionalSG,
                 ],
@@ -379,10 +379,10 @@ class CategoryModel {
             ],
         ];
 
-        if ($this->hasSubgroups()) {
-            $out['subgroups'] = [
-                'required' => $this->requiredSubgroups,
-                'optional' => $this->optionalSubgroups,
+        if ($this->hasSubobjects()) {
+            $out['subobjects'] = [
+                'required' => $this->requiredSubobjects,
+                'optional' => $this->optionalSubobjects,
             ];
         }
 

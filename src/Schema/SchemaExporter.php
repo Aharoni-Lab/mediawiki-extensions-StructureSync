@@ -188,8 +188,8 @@ class SchemaExporter {
                 $usedProperties = array_merge($usedProperties, $cat->getAllProperties());
                 $usedSubobjects = array_merge(
                     $usedSubobjects,
-                    $cat->getRequiredSubgroups(),
-                    $cat->getOptionalSubgroups()
+                    $cat->getRequiredSubobjects(),
+                    $cat->getOptionalSubobjects()
                 );
 
             } catch (\Throwable $e) {
@@ -265,7 +265,7 @@ class SchemaExporter {
 	 *   categoriesWithProperties:int,
 	 *   categoriesWithDisplay:int,
 	 *   categoriesWithForms:int,
-	 *   categoriesWithSubgroups:int
+	 *   categoriesWithSubobjects:int
 	 * }
 	 */
 	public function getStatistics(): array {
@@ -281,7 +281,7 @@ class SchemaExporter {
 			'categoriesWithProperties' => 0,
 			'categoriesWithDisplay'    => 0,
 			'categoriesWithForms'      => 0,
-			'categoriesWithSubgroups'  => 0,
+			'categoriesWithSubobjects'  => 0,
 		];
 
 		foreach ($categories as $cat) {
@@ -306,9 +306,9 @@ class SchemaExporter {
 				$stats['categoriesWithForms']++;
 			}
 
-			// Subgroups (new Subobject architecture)
-			if ($cat->getRequiredSubgroups() || $cat->getOptionalSubgroups()) {
-				$stats['categoriesWithSubgroups']++;
+			// Subobjects (new Subobject architecture)
+			if ($cat->getRequiredSubobjects() || $cat->getOptionalSubobjects()) {
+				$stats['categoriesWithSubobjects']++;
 			}
 		}
 

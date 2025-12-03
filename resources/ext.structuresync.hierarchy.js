@@ -277,18 +277,18 @@
 	 * SUBGROUP TABLE
 	 * ======================================================================= */
 
-	function renderSubgroupTable( $container, data ) {
-		const list = data.inheritedSubgroups || [];
+	function renderSubobjectTable( $container, data ) {
+		const list = data.inheritedSubobjects || [];
 		if ( !list.length ) {
-			return renderEmpty( $container, msg( 'structuresync-hierarchy-no-subgroups' ) );
+			return renderEmpty( $container, msg( 'structuresync-hierarchy-no-subobjects' ) );
 		}
 
 		const $table = $( '<table>' )
-			.addClass( 'wikitable ss-subgroup-summary' )
+			.addClass( 'wikitable ss-subobject-summary' )
 			.append(
 				$( '<thead>' ).append(
 					$( '<tr>' )
-						.append( $( '<th>' ).text( msg( 'structuresync-hierarchy-subgroup-name' ) ) )
+						.append( $( '<th>' ).text( msg( 'structuresync-hierarchy-subobject-name' ) ) )
 						.append( $( '<th>' ).text( msg( 'structuresync-hierarchy-source-category' ) ) )
 						.append( $( '<th>' ).text( msg( 'structuresync-hierarchy-required-state' ) ) )
 				)
@@ -302,9 +302,9 @@
 				$( '<tr>' )
 					.append(
 						$( '<td>' ).append(
-							s.subgroupTitle
-								? buildLink( s.subgroupTitle, 'Subobject' )
-								: stripPrefix( s.subgroupTitle, 'Subobject' ) || '—'
+							s.subobjectTitle
+								? buildLink( s.subobjectTitle, 'Subobject' )
+								: stripPrefix( s.subobjectTitle, 'Subobject' ) || '—'
 						)
 					)
 					.append(
@@ -405,7 +405,7 @@
 
 				const $tree = $( '<div>' ).addClass( 'ss-hierarchy-tree-container' );
 				const $props = $( '<div>' ).addClass( 'ss-hierarchy-props-container' );
-				const $subs = $( '<div>' ).addClass( 'ss-hierarchy-subgroups-container' );
+				const $subs = $( '<div>' ).addClass( 'ss-hierarchy-subobjects-container' );
 
 				$root.empty().append(
 					$( '<div>' ).addClass( 'ss-hierarchy-section' )
@@ -420,14 +420,14 @@
 						),
 					$( '<div>' ).addClass( 'ss-hierarchy-section' )
 						.append(
-							$( '<h3>' ).text( msg( 'structuresync-hierarchy-subgroups-title' ) ),
+							$( '<h3>' ).text( msg( 'structuresync-hierarchy-subobjects-title' ) ),
 							$subs
 						)
 				);
 
 				renderHierarchyTree( $tree, payload );
 				renderPropertyTable( $props, payload );
-				renderSubgroupTable( $subs, payload );
+				renderSubobjectTable( $subs, payload );
 			} )
 			.fail( ( code, result ) => {
 				$root.removeClass( 'ss-hierarchy-loading' );

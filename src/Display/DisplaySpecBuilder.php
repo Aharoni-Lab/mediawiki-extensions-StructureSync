@@ -72,7 +72,7 @@ class DisplaySpecBuilder {
 	 * 2. Collects display sections from all ancestors (root-first order)
 	 * 3. Merges sections with the same name
 	 * 4. Generates a default section if no sections are defined
-	 * 5. Computes inherited subgroups (required/optional) along the chain
+	 * 5. Computes inherited subobjects (required/optional) along the chain
 	 *
 	 * Section merging strategy:
 	 * - Sections with the same name are merged
@@ -89,8 +89,8 @@ class DisplaySpecBuilder {
 	 *     ],
 	 *     ...
 	 *   ],
-	 *   'subgroups' => [
-	 *     'required' => string[],            // subgroup names (without prefix)
+	 *   'subobjects' => [
+	 *     'required' => string[],            // subobject names (without prefix)
 	 *     'optional' => string[]
 	 *   ],
 	 * ]
@@ -260,11 +260,11 @@ class DisplaySpecBuilder {
 			}
 		}
 
-		// 4. Compute inherited subgroups (required/optional) across the ancestor chain
+		// 4. Compute inherited subobjects (required/optional) across the ancestor chain
 		$allCategories = $this->categoryStore->getAllCategories();
-		$requiredSubgroups = [];
-		$optionalSubgroups = [];
-		$seenSubgroups = [];
+		$requiredSubobjects = [];
+		$optionalSubobjects = [];
+		$seenSubobjects = [];
 
 		foreach ( $ancestors as $ancestorName ) {
 			/** @var CategoryModel|null $ancestor */
@@ -273,24 +273,24 @@ class DisplaySpecBuilder {
 				continue;
 			}
 
-			// Required subgroups
-			foreach ( $ancestor->getRequiredSubgroups() as $subgroup ) {
-				$subgroup = trim( (string)$subgroup );
-				if ( $subgroup === '' || isset( $seenSubgroups[$subgroup] ) ) {
+			// Required subobjects
+			foreach ( $ancestor->getRequiredSubobjects() as $subobject ) {
+				$subobject = trim( (string)$subobject );
+				if ( $subobject === '' || isset( $seenSubobjects[$subobject] ) ) {
 					continue;
 				}
-				$seenSubgroups[$subgroup] = true;
-				$requiredSubgroups[] = $subgroup;
+				$seenSubobjects[$subobject] = true;
+				$requiredSubobjects[] = $subobject;
 			}
 
-			// Optional subgroups
-			foreach ( $ancestor->getOptionalSubgroups() as $subgroup ) {
-				$subgroup = trim( (string)$subgroup );
-				if ( $subgroup === '' || isset( $seenSubgroups[$subgroup] ) ) {
+			// Optional subobjects
+			foreach ( $ancestor->getOptionalSubobjects() as $subobject ) {
+				$subobject = trim( (string)$subobject );
+				if ( $subobject === '' || isset( $seenSubobjects[$subobject] ) ) {
 					continue;
 				}
-				$seenSubgroups[$subgroup] = true;
-				$optionalSubgroups[] = $subgroup;
+				$seenSubobjects[$subobject] = true;
+				$optionalSubobjects[] = $subobject;
 			}
 		}
 
@@ -298,9 +298,9 @@ class DisplaySpecBuilder {
 
 		return [
 			'sections'  => $mergedSections,
-			'subgroups' => [
-				'required' => $requiredSubgroups,
-				'optional' => $optionalSubgroups,
+			'subobjects' => [
+				'required' => $requiredSubobjects,
+				'optional' => $optionalSubobjects,
 			],
 		];
 	}

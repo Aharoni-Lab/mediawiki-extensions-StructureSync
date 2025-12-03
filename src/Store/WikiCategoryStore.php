@@ -129,9 +129,9 @@ class WikiCategoryStore {
                 'optional' => $this->fetchList($sdata, 'Has optional property', 'property'),
             ],
 
-            'subgroups' => [
-                'required' => $this->fetchList($sdata, 'Has required subgroup', 'subobject'),
-                'optional' => $this->fetchList($sdata, 'Has optional subgroup', 'subobject'),
+            'subobjects' => [
+                'required' => $this->fetchList($sdata, 'Has required subobject', 'subobject'),
+                'optional' => $this->fetchList($sdata, 'Has optional subobject', 'subobject'),
             ],
 
             'display' => $this->loadDisplayConfig($sdata),
@@ -277,13 +277,13 @@ class WikiCategoryStore {
             $lines[] = "[[Has optional property::Property:$prop]]";
         }
 
-        // Subgroups
-        foreach ($cat->getRequiredSubgroups() as $sg) {
-            $lines[] = "[[Has required subgroup::Subobject:$sg]]";
+        // Subobjects
+        foreach ($cat->getRequiredSubobjects() as $sg) {
+            $lines[] = "[[Has required subobject::Subobject:$sg]]";
         }
 
-        foreach ($cat->getOptionalSubgroups() as $sg) {
-            $lines[] = "[[Has optional subgroup::Subobject:$sg]]";
+        foreach ($cat->getOptionalSubobjects() as $sg) {
+            $lines[] = "[[Has optional subobject::Subobject:$sg]]";
         }
 
         // Display sections

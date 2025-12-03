@@ -104,8 +104,8 @@ class ApiStructureSyncHierarchy extends ApiBase {
             $convertList( $data['inheritedProperties'], 'required' );
         }
 
-        if ( isset( $data['inheritedSubgroups'] ) ) {
-            $convertList( $data['inheritedSubgroups'], 'required' );
+        if ( isset( $data['inheritedSubobjects'] ) ) {
+            $convertList( $data['inheritedSubobjects'], 'required' );
         }
     }
 

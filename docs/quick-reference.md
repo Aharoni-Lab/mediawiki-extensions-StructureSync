@@ -84,7 +84,7 @@ curl "http://wiki/api.php?action=structuresync-hierarchy&category=NAME&format=js
 2. **Reference from Category**
    ```wiki
    Category:Publication
-   [[Has required subgroup::Subobject:PublicationAuthor]]
+   [[Has required subobject::Subobject:PublicationAuthor]]
    ```
 3. **Use generated template on pages**
    ```wiki
@@ -95,5 +95,5 @@ curl "http://wiki/api.php?action=structuresync-hierarchy&category=NAME&format=js
    }}
    ```
 4. **Display output**
-   - Generated `Template:Publication/display` will automatically list subgroup tables via `{{#StructureSyncRenderAllProperties:}}`.
+   - Generated `Template:Publication/display` will automatically list subobject tables via `{{#StructureSyncRenderAllProperties:}}`.
 

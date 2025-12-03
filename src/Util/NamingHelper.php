@@ -193,7 +193,7 @@ class NamingHelper
      * @param string $subobjectName
      * @return string
      */
-    public static function subgroupTemplateName( string $categoryName, string $subobjectName ): string {
+    public static function subobjectTemplateName( string $categoryName, string $subobjectName ): string {
         $base = trim( $categoryName );
         $sub = trim( $subobjectName );
         $combined = $base . '_' . $sub;

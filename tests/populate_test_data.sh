@@ -157,16 +157,16 @@ docker compose exec -T mediawiki bash -c "php maintenance/edit.php -b 'Property:
 PROPEOF
 "
 
-# Create Has required subgroup property
-create_property "Has required subgroup" "Declares a required subgroup (Subobject page) for a category." "Page" "[[Allows value from namespace::Subobject]]
+# Create Has required subobject property
+create_property "Has required subobject" "Declares a required subobject (Subobject page) for a category." "Page" "[[Allows value from namespace::Subobject]]
 [[Allows multiple values::true]]"
 
-# Create Has optional subgroup property
-create_property "Has optional subgroup" "Declares an optional subgroup (Subobject page) for a category." "Page" "[[Allows value from namespace::Subobject]]
+# Create Has optional subobject property
+create_property "Has optional subobject" "Declares an optional subobject (Subobject page) for a category." "Page" "[[Allows value from namespace::Subobject]]
 [[Allows multiple values::true]]"
 
-# Create Has subgroup type property (stored on individual subobjects)
-create_property "Has subgroup type" "Identifies which Subobject schema a stored subobject instance conforms to." "Page" "[[Allows value from namespace::Subobject]]"
+# Create Has subobject type property (stored on individual subobjects)
+create_property "Has subobject type" "Identifies which Subobject schema a stored subobject instance conforms to." "Page" "[[Allows value from namespace::Subobject]]"
 
 # Create Has display section property
 docker compose exec -T mediawiki bash -c "php maintenance/edit.php -b 'Property:Has display section' <<'PROPEOF'
@@ -312,9 +312,9 @@ create_property "Has department" "Department affiliation." "Page" "[[Display lab
 create_property "Has collaborator" "Research collaborators." "Page" "[[Allows multiple values::true]]"
 
 # ==========================================
-# Property Type: Publication Subgroup Fields
+# Property Type: Publication Subobject Fields
 # ==========================================
-echo "  - Publication subgroup properties..."
+echo "  - Publication subobject properties..."
 create_property "Has author" "Author referenced by a publication." "Page" "[[Allows value from category::Person]]"
 create_property "Has author order" "Ordering index for publication authors." "Number" ""
 create_property "Is co-first author" "Marks whether the author is co-first." "Boolean" ""
@@ -455,8 +455,8 @@ create_category "Publication" "<!-- StructureSync Start -->
 [[Has optional property::Property:Has keywords]]
 [[Has optional property::Property:Has website]]
 
-=== Required Subgroups ===
-[[Has required subgroup::Subobject:PublicationAuthor]]
+=== Required Subobjects ===
+[[Has required subobject::Subobject:PublicationAuthor]]
 
 {{#subobject:display_section_0
 |Has display section name=Publication Details
@@ -726,8 +726,8 @@ create_category "Category" "<!-- StructureSync Start -->
 [[Has optional property::Property:Has target namespace]]
 [[Has optional property::Property:Has required property]]
 [[Has optional property::Property:Has optional property]]
-[[Has optional property::Property:Has required subgroup]]
-[[Has optional property::Property:Has optional subgroup]]
+[[Has optional property::Property:Has required subobject]]
+[[Has optional property::Property:Has optional subobject]]
 [[Has optional property::Property:Has display section]]
 
 {{#subobject:display_section_0
@@ -741,8 +741,8 @@ create_category "Category" "<!-- StructureSync Start -->
 |Has display section property=Property:Has parent category
 |Has display section property=Property:Has required property
 |Has display section property=Property:Has optional property
-|Has display section property=Property:Has required subgroup
-|Has display section property=Property:Has optional subgroup
+|Has display section property=Property:Has required subobject
+|Has display section property=Property:Has optional subobject
 }}
 
 {{#subobject:display_section_2

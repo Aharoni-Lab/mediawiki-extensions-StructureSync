@@ -96,7 +96,7 @@ php extensions/StructureSync/maintenance/regenerateArtifacts.php --category=Pers
 
 ## Schema Format
 
-Subobjects live in the `Subobject:` namespace. They define structured, repeatable groups of properties (think “Publication Author”, “Funding Line”, etc.) using the same Semantic annotations as categories (`[[Has required property::Property:Foo]]`, `[[Has optional property::Property:Bar]]`). Categories reference these subobjects via `[[Has required subgroup::Subobject:Name]]` and `[[Has optional subgroup::Subobject:Name]]`. Pages then include the auto-generated `Template:<Category>_<Subobject>` templates to store multiple entries.
+Subobjects live in the `Subobject:` namespace. They define structured, repeatable groups of properties (think “Publication Author”, “Funding Line”, etc.) using the same Semantic annotations as categories (`[[Has required property::Property:Foo]]`, `[[Has optional property::Property:Bar]]`). Categories reference these subobjects via `[[Has required subobject::Subobject:Name]]` and `[[Has optional subobject::Subobject:Name]]`. Pages then include the auto-generated `Template:<Category>_<Subobject>` templates to store multiple entries.
 
 ### JSON Structure
 
@@ -158,9 +158,9 @@ StructureSync uses these SMW properties to store schema metadata on wiki pages:
 - **Has parent category** (Type: Page) - Links to parent categories
 - **Has required property** (Type: Page) - Required properties for this category
 - **Has optional property** (Type: Page) - Optional properties for this category
-- **Has required subgroup** (Type: Page) - Required repeatable subobject definitions
-- **Has optional subgroup** (Type: Page) - Optional repeatable subobject definitions
-- **Has subgroup type** (Type: Page) - Tags each stored subobject instance with the Subobject schema it follows
+- **Has required subobject** (Type: Page) - Required repeatable subobject definitions
+- **Has optional subobject** (Type: Page) - Optional repeatable subobject definitions
+- **Has subobject type** (Type: Page) - Tags each stored subobject instance with the Subobject schema it follows
 - **Has display header property** (Type: Page) - Properties shown in the page header
 - **Has display section name** (Type: Text) - Name of a display section
 - **Has display section property** (Type: Page) - Properties in a display section
@@ -174,8 +174,8 @@ For each category, StructureSync generates:
 1. **Template:{Category}/semantic** - Stores semantic data (auto-generated, always overwritten)
 2. **Template:{Category}** - Dispatcher template (auto-generated, always overwritten)
 3. **Template:{Category}/display** - Display template (generated once as stub, never overwritten)
-4. **Template:{Category}_{Subobject}** - One per declared subgroup for `{{#subobject:...}}` storage
-5. **Form:{Category}** - PageForms form (auto-generated, always overwritten, including subgroup widgets)
+4. **Template:{Category}_{Subobject}** - One per declared subobject for `{{#subobject:...}}` storage
+5. **Form:{Category}** - PageForms form (auto-generated, always overwritten, including subobject widgets)
 
 ## Multiple Inheritance
 

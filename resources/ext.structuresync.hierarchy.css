@@ -229,22 +229,22 @@
 }
 
 /* ========================================================
-   Subgroup table (same look as properties)
+   Subobject table (same look as properties)
    ======================================================== */
 
-.ss-subgroup-summary {
+.ss-subobject-summary {
 	width: 100%;
 	border-collapse: collapse;
 	margin-top: 0.75em;
 }
 
-.ss-subgroup-summary th,
-.ss-subgroup-summary td {
+.ss-subobject-summary th,
+.ss-subobject-summary td {
 	padding: 0.5em 0.75em;
 	border: 1px solid #a2a9b1;
 }
 
-.ss-subgroup-summary th {
+.ss-subobject-summary th {
 	background-color: #eaecf0;
 	font-weight: 600;
 }
