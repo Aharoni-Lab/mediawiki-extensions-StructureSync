@@ -21,7 +21,7 @@ get_cache_dir() {
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 CACHE_BASE="$(get_cache_dir)"
 MW_DIR="${MW_DIR:-$CACHE_BASE/mediawiki-StructureSync-test}"
-EXT_DIR="${EXT_DIR:-$SCRIPT_DIR/..}"
+EXT_DIR="${EXT_DIR:-$SCRIPT_DIR/../..}"
 MW_BRANCH=REL1_44
 MW_PORT=8889
 MW_ADMIN_USER=Admin

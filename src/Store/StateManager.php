@@ -77,7 +77,7 @@ class StateManager {
 			return false;
 		}
 
-		$json = json_encode( $state, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
+		$json = json_encode( $state, \JSON_PRETTY_PRINT | \JSON_UNESCAPED_SLASHES | \JSON_UNESCAPED_UNICODE );
 		$summary = 'StructureSync: Update state tracking';
 
 		return $this->pageCreator->createOrUpdatePage( $title, $json, $summary );
