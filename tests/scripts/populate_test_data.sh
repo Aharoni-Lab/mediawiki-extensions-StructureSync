@@ -38,7 +38,7 @@ docker compose exec -T mediawiki bash -c "mkdir -p /tmp/my_wiki && chmod 777 /tm
 # Helper function to create a property
 create_property() {
     local name="$1"
-    local description="$2"
+    local description="$2" 
     local type="$3"
     local extra="$4"  # Additional annotations (optional)
     
@@ -109,10 +109,10 @@ echo "  - Contact information properties..."
 # Create display pattern properties (templates that other properties can reference)
 # Use double-bracket syntax for reliable parsing in template contexts
 echo "  - Display pattern properties..."
-create_property "Email" "Display pattern for rendering email addresses." "Text" "[[Has template::[[mailto:{{{value}}}]]]]
+create_property "Email" "Display pattern for rendering email addresses." "Text" "[[Has template::%5Bmailto:{{{value}}} {{{value}}}%5D]]
 [[Category:Display Patterns]]"
 
-create_property "URL" "Display pattern for rendering website URLs." "Text" "[[Has template::[{{{value}}}]]]
+create_property "URL" "Display pattern for rendering website URLs." "Text" "[[Has template::%5B{{{value}}} {{{value}}}%5D]]
 [[Category:Display Patterns]]"
 
 # Contact properties using display patterns

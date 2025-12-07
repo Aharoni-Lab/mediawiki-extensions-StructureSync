@@ -98,26 +98,27 @@ class SpecialStructureSync extends SpecialPage
 	 * @param string $operation Operation name (import, generate, etc.)
 	 * @return bool True if rate limit exceeded
 	 */
-	private function checkRateLimit( string $operation ): bool {
+	private function checkRateLimit(string $operation): bool
+	{
 		$user = $this->getUser();
-		
+
 		// Exempt sysops from rate limiting
-		if ( $user->isAllowed( 'structuresync-bypass-ratelimit' ) || $user->isAllowed( 'protect' ) ) {
+		if ($user->isAllowed('structuresync-bypass-ratelimit') || $user->isAllowed('protect')) {
 			return false;
 		}
 
 		$cache = \ObjectCache::getLocalClusterInstance();
-		$key = $cache->makeKey( self::RATE_LIMIT_CACHE_PREFIX, $user->getId(), $operation );
-		
-		$count = $cache->get( $key ) ?: 0;
-		
-		if ( $count >= self::RATE_LIMIT_PER_HOUR ) {
+		$key = $cache->makeKey(self::RATE_LIMIT_CACHE_PREFIX, $user->getId(), $operation);
+
+		$count = $cache->get($key) ?: 0;
+
+		if ($count >= self::RATE_LIMIT_PER_HOUR) {
 			return true; // Rate limit exceeded
 		}
-		
+
 		// Increment counter (expires in 1 hour)
-		$cache->set( $key, $count + 1, 3600 );
-		
+		$cache->set($key, $count + 1, 3600);
+
 		return false;
 	}
 
@@ -130,14 +131,15 @@ class SpecialStructureSync extends SpecialPage
 	 * @param string $details Additional details about the operation
 	 * @param array $params Structured parameters for the log entry
 	 */
-	private function logOperation( string $action, string $details, array $params = [] ): void {
-		$logEntry = new \ManualLogEntry( 'structuresync', $action );
-		$logEntry->setPerformer( $this->getUser() );
-		$logEntry->setTarget( $this->getPageTitle() );
-		$logEntry->setComment( $details );
-		$logEntry->setParameters( $params );
+	private function logOperation(string $action, string $details, array $params = []): void
+	{
+		$logEntry = new \ManualLogEntry('structuresync', $action);
+		$logEntry->setPerformer($this->getUser());
+		$logEntry->setTarget($this->getPageTitle());
+		$logEntry->setComment($details);
+		$logEntry->setParameters($params);
 		$logId = $logEntry->insert();
-		$logEntry->publish( $logId );
+		$logEntry->publish($logId);
 	}
 
 	/**
@@ -176,7 +178,7 @@ class SpecialStructureSync extends SpecialPage
 		$this->showNavigation($action);
 
 		// Dispatch
-		switch ( $action ) {
+		switch ($action) {
 			case 'validate':
 				$this->showValidate();
 				break;
@@ -493,9 +495,9 @@ class SpecialStructureSync extends SpecialPage
 			)
 		);
 
-		$categoryCount = (int)($stats['categoryCount'] ?? 0);
-		$propertyCount = (int)($stats['propertyCount'] ?? 0);
-		$subobjectCount = (int)($stats['subobjectCount'] ?? 0);
+		$categoryCount = (int) ($stats['categoryCount'] ?? 0);
+		$propertyCount = (int) ($stats['propertyCount'] ?? 0);
+		$subobjectCount = (int) ($stats['subobjectCount'] ?? 0);
 		$lang = $this->getLanguage();
 
 		$summaryGrid = Html::rawElement(
@@ -619,29 +621,29 @@ class SpecialStructureSync extends SpecialPage
 		$modifiedPages = [];
 
 		// Check each category and its properties using schema-based hashes
-		foreach ( $categories as $category ) {
+		foreach ($categories as $category) {
 			$categoryName = $category->getName();
 			$pageName = "Category:$categoryName";
 
-			$currentHash = $hashComputer->computeCategoryModelHash( $category );
+			$currentHash = $hashComputer->computeCategoryModelHash($category);
 			$storedHash = $storedHashes[$pageName]['generated'] ?? '';
-			if ( $storedHash !== '' && $currentHash !== $storedHash ) {
+			if ($storedHash !== '' && $currentHash !== $storedHash) {
 				$modifiedPages[$pageName] = true;
 			}
 
 			// Check all properties used by this category
 			$allProperties = $category->getAllProperties();
-			foreach ( $allProperties as $propertyName ) {
+			foreach ($allProperties as $propertyName) {
 				$propPageName = "Property:$propertyName";
-				if ( isset( $modifiedPages[$propPageName] ) ) {
+				if (isset($modifiedPages[$propPageName])) {
 					continue; // Already checked
 				}
 
-				$propModel = $propertyStore->readProperty( $propertyName );
-				if ( $propModel ) {
-					$currentHash = $hashComputer->computePropertyModelHash( $propModel );
+				$propModel = $propertyStore->readProperty($propertyName);
+				if ($propModel) {
+					$currentHash = $hashComputer->computePropertyModelHash($propModel);
 					$storedHash = $storedHashes[$propPageName]['generated'] ?? '';
-					if ( $storedHash !== '' && $currentHash !== $storedHash ) {
+					if ($storedHash !== '' && $currentHash !== $storedHash) {
 						$modifiedPages[$propPageName] = true;
 					}
 				}
@@ -925,12 +927,12 @@ class SpecialStructureSync extends SpecialPage
 		$request = $this->getRequest();
 
 		// Rate limiting for generation (expensive operation)
-		if ( $this->checkRateLimit( 'generate' ) ) {
-			$output->addHTML( Html::errorBox(
-				$this->msg( 'structuresync-ratelimit-exceeded' )
-					->params( self::RATE_LIMIT_PER_HOUR )
+		if ($this->checkRateLimit('generate')) {
+			$output->addHTML(Html::errorBox(
+				$this->msg('structuresync-ratelimit-exceeded')
+					->params(self::RATE_LIMIT_PER_HOUR)
 					->text()
-			) );
+			));
 			return;
 		}
 
@@ -946,84 +948,95 @@ class SpecialStructureSync extends SpecialPage
 		try {
 			// Step 1: Generate property templates first (needed by display templates)
 			$output->addHTML(
-				Html::element( 'div', [ 'class' => 'structuresync-progress-item' ],
+				Html::element(
+					'div',
+					['class' => 'structuresync-progress-item'],
 					'Generating property templates...'
 				)
 			);
-			
+
 			// Generate default property template
 			$defaultResult = $propertyTemplateGenerator->generateDefaultPropertyTemplate();
-			if ( !empty( $defaultResult['success'] ) ) {
+			if (!empty($defaultResult['success'])) {
 				$output->addHTML(
-					Html::element( 'div', [ 'class' => 'structuresync-progress-item' ],
+					Html::element(
+						'div',
+						['class' => 'structuresync-progress-item'],
 						'  ✓ Generated Template:Property/Default'
 					)
 				);
 			}
-			
-			// Generate common property type templates (Email, URL, etc.)
-			$commonResult = $propertyTemplateGenerator->generateCommonPropertyTypeTemplates();
-			if ( !empty( $commonResult['generated'] ) ) {
-				$output->addHTML(
-					Html::element( 'div', [ 'class' => 'structuresync-progress-item' ],
-						'  ✓ Generated ' . $commonResult['generated'] . ' common property type templates'
-					)
-				);
-			}
-			
+
+			// Hardcoded "Common Property Type Templates" generation removed.
+			// These are now handled generically by generateAllPropertyTemplates using
+			// definitions from the wiki (Property:Email, Property:URL, etc).
+
+
 			// Generate templates for all properties
 			$allResult = $propertyTemplateGenerator->generateAllPropertyTemplates();
-			if ( !empty( $allResult['generated'] ) ) {
+			if (!empty($allResult['generated'])) {
 				$msg = '  ✓ Generated ' . $allResult['generated'] . ' property templates';
-				if ( !empty( $allResult['skipped'] ) ) {
+				if (!empty($allResult['skipped'])) {
 					$msg .= ' (skipped ' . $allResult['skipped'] . ' meta-properties)';
 				}
 				$output->addHTML(
-					Html::element( 'div', [ 'class' => 'structuresync-progress-item' ],
+					Html::element(
+						'div',
+						['class' => 'structuresync-progress-item'],
 						$msg
 					)
 				);
 			}
-			if ( !empty( $allResult['errors'] ) ) {
-				$errorCount = count( $allResult['errors'] );
+			if (!empty($allResult['errors'])) {
+				$errorCount = count($allResult['errors']);
 				$output->addHTML(
-					Html::element( 'div', [ 'class' => 'structuresync-progress-item error' ],
+					Html::element(
+						'div',
+						['class' => 'structuresync-progress-item error'],
 						"  ✗ {$errorCount} property templates failed to generate"
 					)
 				);
 				// Show first 5 errors with details
-				$displayErrors = array_slice( $allResult['errors'], 0, 5 );
-				foreach ( $displayErrors as $error ) {
+				$displayErrors = array_slice($allResult['errors'], 0, 5);
+				foreach ($displayErrors as $error) {
 					$output->addHTML(
-						Html::element( 'div', [ 'class' => 'structuresync-progress-item error' ],
+						Html::element(
+							'div',
+							['class' => 'structuresync-progress-item error'],
 							'    ' . $error
 						)
 					);
 				}
-				if ( $errorCount > 5 ) {
+				if ($errorCount > 5) {
 					$output->addHTML(
-						Html::element( 'div', [ 'class' => 'structuresync-progress-item' ],
-							"    ... and " . ( $errorCount - 5 ) . " more errors"
+						Html::element(
+							'div',
+							['class' => 'structuresync-progress-item'],
+							"    ... and " . ($errorCount - 5) . " more errors"
 						)
 					);
 				}
 			}
 			// Show debug details if requested
-			if ( $request->getBool( 'debug' ) && !empty( $allResult['details'] ) ) {
+			if ($request->getBool('debug') && !empty($allResult['details'])) {
 				$output->addHTML(
-					Html::element( 'div', [ 'class' => 'structuresync-progress-item' ],
+					Html::element(
+						'div',
+						['class' => 'structuresync-progress-item'],
 						'Property template details:'
 					)
 				);
-				foreach ( $allResult['details'] as $detail ) {
+				foreach ($allResult['details'] as $detail) {
 					$output->addHTML(
-						Html::element( 'div', [ 'class' => 'structuresync-progress-item' ],
+						Html::element(
+							'div',
+							['class' => 'structuresync-progress-item'],
 							'    ' . $detail
 						)
 					);
 				}
 			}
-			
+
 			// Step 2: Determine target categories
 			if ($categoryName === '') {
 				$categories = $categoryStore->getAllCategories();
@@ -1034,16 +1047,16 @@ class SpecialStructureSync extends SpecialPage
 
 			if (empty($categories)) {
 				$output->addHTML(Html::errorBox(
-					$this->msg( 'structuresync-generate-no-categories' )->text()
+					$this->msg('structuresync-generate-no-categories')->text()
 				));
 				return;
 			}
 
 			$progressContainerOpen = true;
 			$output->addHTML(
-				Html::openElement( 'div', [ 'class' => 'structuresync-progress' ] ) .
-				Html::element( 'p', [], $this->msg( 'structuresync-generate-inprogress' )->text() ) .
-				Html::openElement( 'div', [ 'class' => 'structuresync-progress-log' ] )
+				Html::openElement('div', ['class' => 'structuresync-progress']) .
+				Html::element('p', [], $this->msg('structuresync-generate-inprogress')->text()) .
+				Html::openElement('div', ['class' => 'structuresync-progress-log'])
 			);
 
 			// Build map for inheritance resolution
@@ -1071,7 +1084,7 @@ class SpecialStructureSync extends SpecialPage
 			$subobjectStore = new WikiSubobjectStore();
 
 			$successCount = 0;
-			$totalCount = count( $categories );
+			$totalCount = count($categories);
 
 			foreach ($categories as $category) {
 				$name = $category->getName();
@@ -1080,8 +1093,8 @@ class SpecialStructureSync extends SpecialPage
 				$output->addHTML(
 					Html::element(
 						'div',
-						[ 'class' => 'structuresync-progress-item' ],
-						$this->msg( 'structuresync-generate-processing' )->params( $name )->text()
+						['class' => 'structuresync-progress-item'],
+						$this->msg('structuresync-generate-processing')->params($name)->text()
 					)
 				);
 
@@ -1094,11 +1107,11 @@ class SpecialStructureSync extends SpecialPage
 					$templateGenerator->generateAllTemplates($effective);
 					$formGenerator->generateAndSaveForm($effective, $ancestors);
 					$displayGenerator->generateOrUpdateDisplayStub($effective);
-					
+
 					$successCount++;
-				} catch ( \Exception $e ) {
+				} catch (\Exception $e) {
 					// Log error but continue with other categories
-					wfLogWarning( "StructureSync generate failed for category '$name': " . $e->getMessage() );
+					wfLogWarning("StructureSync generate failed for category '$name': " . $e->getMessage());
 				}
 			}
 
@@ -1107,25 +1120,25 @@ class SpecialStructureSync extends SpecialPage
 
 			// Hash all categories
 			$allCategories = $categoryStore->getAllCategories();
-			foreach ( $allCategories as $category ) {
+			foreach ($allCategories as $category) {
 				$categoryName = $category->getName();
-				$hash = $hashComputer->computeCategoryModelHash( $category );
+				$hash = $hashComputer->computeCategoryModelHash($category);
 				$pageHashes["Category:$categoryName"] = $hash;
 			}
 
 			// Hash all properties
 			$allProperties = $propertyStore->getAllProperties();
-			foreach ( $allProperties as $property ) {
+			foreach ($allProperties as $property) {
 				$propertyName = $property->getName();
-				$hash = $hashComputer->computePropertyModelHash( $property );
+				$hash = $hashComputer->computePropertyModelHash($property);
 				$pageHashes["Property:$propertyName"] = $hash;
 			}
 
 			// Hash all subobjects
 			$allSubobjects = $subobjectStore->getAllSubobjects();
-			foreach ( $allSubobjects as $subobject ) {
+			foreach ($allSubobjects as $subobject) {
 				$subobjectName = $subobject->getName();
-				$hash = $hashComputer->computeSubobjectModelHash( $subobject );
+				$hash = $hashComputer->computeSubobjectModelHash($subobject);
 				$pageHashes["Subobject:$subobjectName"] = $hash;
 			}
 
@@ -1135,44 +1148,44 @@ class SpecialStructureSync extends SpecialPage
 				$stateManager->clearDirty();
 			}
 
-			if ( $progressContainerOpen ) {
+			if ($progressContainerOpen) {
 				$output->addHTML(
-					Html::closeElement( 'div' ) . // closes log
-					Html::closeElement( 'div' )   // closes progress container
+					Html::closeElement('div') . // closes log
+					Html::closeElement('div')   // closes progress container
 				);
 				$progressContainerOpen = false;
 			}
 
 			// Log the operation
-			$this->logOperation( 'generate', 'Template/form generation completed', [
+			$this->logOperation('generate', 'Template/form generation completed', [
 				'categoryFilter' => $categoryName ?: 'all',
 				'categoriesProcessed' => $successCount,
 				'categoriesTotal' => $totalCount,
-				'pagesHashed' => count( $pageHashes ),
-			] );
+				'pagesHashed' => count($pageHashes),
+			]);
 
 			$output->addHTML(
 				Html::successBox(
 					$this->msg('structuresync-generate-success')
-						->numParams( $successCount, $totalCount )
+						->numParams($successCount, $totalCount)
 						->text()
 				)
 			);
 		} catch (\Exception $e) {
-			if ( $progressContainerOpen ) {
+			if ($progressContainerOpen) {
 				$output->addHTML(
-					Html::closeElement( 'div' ) .
-					Html::closeElement( 'div' )
+					Html::closeElement('div') .
+					Html::closeElement('div')
 				);
 			}
 			// Log exception
-			$this->logOperation( 'generate', 'Generation exception: ' . $e->getMessage(), [
-				'exception' => get_class( $e ),
+			$this->logOperation('generate', 'Generation exception: ' . $e->getMessage(), [
+				'exception' => get_class($e),
 				'categoryFilter' => $categoryName ?? '',
-			] );
-			
+			]);
+
 			$output->addHTML(Html::errorBox(
-				$this->msg( 'structuresync-generate-error' )->params( $e->getMessage() )->text()
+				$this->msg('structuresync-generate-error')->params($e->getMessage())->text()
 			));
 		}
 	}

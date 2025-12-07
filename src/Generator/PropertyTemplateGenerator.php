@@ -25,7 +25,8 @@ use MediaWiki\Extension\StructureSync\Util\NamingHelper;
  *
  * @since 1.0
  */
-class PropertyTemplateGenerator {
+class PropertyTemplateGenerator
+{
 
 	private PageCreator $pageCreator;
 	private WikiPropertyStore $propertyStore;
@@ -51,40 +52,41 @@ class PropertyTemplateGenerator {
 	 * @param PropertyModel $property Property model
 	 * @return array Result with keys: success (bool), message (string), error (string|null)
 	 */
-	public function generatePropertyTemplate( PropertyModel $property ): array {
+	public function generatePropertyTemplate(PropertyModel $property): array
+	{
 		$propertyName = $property->getName();
 		$templateName = 'Property/' . $propertyName;
 
 		// Get template code from property's "Has template" field
-		$templateCode = $this->getPropertyTemplateCode( $property );
+		$templateCode = $this->getPropertyTemplateCode($property);
 
 		// Debug logging
 		$hasTemplateValue = $property->getHasTemplate();
-		if ( $hasTemplateValue !== null ) {
-			wfDebugLog( 'structuresync', "Property '{$propertyName}' has template value: " . substr( $hasTemplateValue, 0, 100 ) );
+		if ($hasTemplateValue !== null) {
+			wfDebugLog('structuresync', "Property '{$propertyName}' has template value: " . substr($hasTemplateValue, 0, 100));
 		}
-		if ( $templateCode !== null ) {
-			wfDebugLog( 'structuresync', "Property '{$propertyName}' resolved template code: " . substr( $templateCode, 0, 100 ) );
+		if ($templateCode !== null) {
+			wfDebugLog('structuresync', "Property '{$propertyName}' resolved template code: " . substr($templateCode, 0, 100));
 		}
 
-		if ( $templateCode === null ) {
+		if ($templateCode === null) {
 			// No custom template defined, generate a simple passthrough template
 			$templateCode = '{{{value}}}';
-			wfDebugLog( 'structuresync', "Property '{$propertyName}' using passthrough template" );
+			wfDebugLog('structuresync', "Property '{$propertyName}' using passthrough template");
 		}
 
-		$content = $this->wrapTemplateContent( $templateCode, $propertyName );
+		$content = $this->wrapTemplateContent($templateCode, $propertyName);
 
-		$title = $this->pageCreator->makeTitle( $templateName, NS_TEMPLATE );
-		if ( !$title ) {
-			wfDebugLog( 'structuresync', "FAILED TO CREATE TITLE: {$templateName}" );
+		$title = $this->pageCreator->makeTitle($templateName, NS_TEMPLATE);
+		if (!$title) {
+			wfDebugLog('structuresync', "FAILED TO CREATE TITLE: {$templateName}");
 			return [
 				'success' => false,
-				'error'   => "Failed to create title for {$templateName}",
+				'error' => "Failed to create title for {$templateName}",
 			];
 		}
 
-		wfDebugLog( 'structuresync', "About to save template: {$templateName}, title valid: yes, content length: " . strlen( $content ) );
+		wfDebugLog('structuresync', "About to save template: {$templateName}, title valid: yes, content length: " . strlen($content));
 
 		$success = $this->pageCreator->createOrUpdatePage(
 			$title,
@@ -92,17 +94,17 @@ class PropertyTemplateGenerator {
 			'StructureSync: Generated property template'
 		);
 
-		if ( !$success ) {
+		if (!$success) {
 			$lastError = $this->pageCreator->getLastError();
 			$errorDetail = $lastError ? ": {$lastError}" : '';
-			wfDebugLog( 'structuresync', "FAILED TO SAVE: {$templateName}{$errorDetail}" );
+			wfDebugLog('structuresync', "FAILED TO SAVE: {$templateName}{$errorDetail}");
 			return [
 				'success' => false,
-				'error'   => "Failed to write template {$templateName}{$errorDetail}",
+				'error' => "Failed to write template {$templateName}{$errorDetail}",
 			];
 		}
-		
-		wfDebugLog( 'structuresync', "Successfully saved: {$templateName}" );
+
+		wfDebugLog('structuresync', "Successfully saved: {$templateName}");
 
 		return [
 			'success' => true,
@@ -115,61 +117,58 @@ class PropertyTemplateGenerator {
 	 *
 	 * @return array Result summary with counts and details
 	 */
-	public function generateAllPropertyTemplates(): array {
+	public function generateAllPropertyTemplates(): array
+	{
 		$properties = $this->propertyStore->getAllProperties();
-		wfDebugLog( 'structuresync', "getAllProperties returned " . count( $properties ) . " properties" );
-		
+		wfDebugLog('structuresync', "getAllProperties returned " . count($properties) . " properties");
+
 		$generated = 0;
 		$skipped = 0;
 		$errors = [];
 		$details = [];
 
-		foreach ( $properties as $property ) {
+		foreach ($properties as $property) {
 			$propertyName = $property->getName();
-			
-			// Skip meta-properties (used for schema definition, not display)
-			if ( $this->isMetaProperty( $propertyName ) ) {
-				$skipped++;
-				wfDebugLog( 'structuresync', "Skipping meta-property: {$propertyName}" );
-				continue;
-			}
-			
-			// Skip common type properties (Email, URL, Image) - already generated
-			if ( in_array( $propertyName, [ 'Email', 'URL', 'Image' ], true ) ) {
-				$skipped++;
-				wfDebugLog( 'structuresync', "Skipping common type property: {$propertyName} (already generated)" );
-				continue;
-			}
-			
-			$hasTemplate = $property->getHasTemplate();
-			
-			wfDebugLog( 'structuresync', "Processing property: {$propertyName}, hasTemplate: " . ( $hasTemplate ? substr( $hasTemplate, 0, 50 ) : 'null' ) );
-			
-			$result = $this->generatePropertyTemplate( $property );
 
-			if ( !empty( $result['success'] ) ) {
+			// Skip meta-properties (used for schema definition, not display)
+			if ($this->isMetaProperty($propertyName)) {
+				$skipped++;
+				wfDebugLog('structuresync', "Skipping meta-property: {$propertyName}");
+				continue;
+			}
+
+			// Email, URL, Image are now treated as regular properties with templates defined in wiki
+
+
+			$hasTemplate = $property->getHasTemplate();
+
+			wfDebugLog('structuresync', "Processing property: {$propertyName}, hasTemplate: " . ($hasTemplate ? substr($hasTemplate, 0, 50) : 'null'));
+
+			$result = $this->generatePropertyTemplate($property);
+
+			if (!empty($result['success'])) {
 				$generated++;
 				// Track which properties have custom templates vs passthrough
-				if ( $hasTemplate !== null && trim( $hasTemplate ) !== '' ) {
+				if ($hasTemplate !== null && trim($hasTemplate) !== '') {
 					$details[] = "{$propertyName}: custom template";
 				} else {
 					$details[] = "{$propertyName}: passthrough";
 				}
 			} else {
 				$errors[] = $result['error'] ?? 'Unknown error';
-				wfDebugLog( 'structuresync', "FAILED property {$propertyName}: " . ( $result['error'] ?? 'Unknown error' ) );
+				wfDebugLog('structuresync', "FAILED property {$propertyName}: " . ($result['error'] ?? 'Unknown error'));
 			}
 		}
 
 		return [
-			'success'   => empty( $errors ),
+			'success' => empty($errors),
 			'generated' => $generated,
-			'skipped'   => $skipped,
-			'errors'    => $errors,
-			'details'   => $details,
+			'skipped' => $skipped,
+			'errors' => $errors,
+			'details' => $details,
 		];
 	}
-	
+
 	/**
 	 * Check if a property is a meta-property (used for schema definition).
 	 *
@@ -179,7 +178,8 @@ class PropertyTemplateGenerator {
 	 * @param string $propertyName Property name
 	 * @return bool True if meta-property
 	 */
-	private function isMetaProperty( string $propertyName ): bool {
+	private function isMetaProperty(string $propertyName): bool
+	{
 		$metaProperties = [
 			// Category schema properties
 			'Display label',
@@ -194,7 +194,7 @@ class PropertyTemplateGenerator {
 			'Has display header property',
 			'Has display section name',
 			'Has display section property',
-			
+
 			// Property schema properties
 			'Has type',
 			'Allows value',
@@ -204,28 +204,28 @@ class PropertyTemplateGenerator {
 			'Allows value from category',
 			'Allows value from namespace',
 			'Has template',
-			
+
 			// TemplateFormat schema properties
 			'Has wrapper template',
 			'Has property template pattern',
 			'Has section separator',
 			'Has empty value behavior',
-			
+
 			// PropertyType schema properties
 			'Has template code',
 			'Has template parameter',
-			
+
 			// Subobject schema properties
 			'Has subobject type',
-			
+
 			// FOAF/Ontology properties
 			'Foaf:name',
 			'Foaf:homepage',
 			'Foaf:knows',
 			'Owl:differentFrom',
 		];
-		
-		return in_array( $propertyName, $metaProperties, true );
+
+		return in_array($propertyName, $metaProperties, true);
 	}
 
 	/**
@@ -235,15 +235,16 @@ class PropertyTemplateGenerator {
 	 *
 	 * @return array Result with keys: success (bool), message (string)
 	 */
-	public function generateDefaultPropertyTemplate(): array {
+	public function generateDefaultPropertyTemplate(): array
+	{
 		$templateName = 'Property/Default';
 		$content = $this->generateDefaultTemplateContent();
 
-		$title = $this->pageCreator->makeTitle( $templateName, NS_TEMPLATE );
-		if ( !$title ) {
+		$title = $this->pageCreator->makeTitle($templateName, NS_TEMPLATE);
+		if (!$title) {
 			return [
 				'success' => false,
-				'error'   => "Failed to create title for {$templateName}",
+				'error' => "Failed to create title for {$templateName}",
 			];
 		}
 
@@ -253,10 +254,10 @@ class PropertyTemplateGenerator {
 			'StructureSync: Generated default property template'
 		);
 
-		if ( !$success ) {
+		if (!$success) {
 			return [
 				'success' => false,
-				'error'   => "Failed to write template {$templateName}",
+				'error' => "Failed to write template {$templateName}",
 			];
 		}
 
@@ -272,10 +273,11 @@ class PropertyTemplateGenerator {
 	 * @param string $propertyName Property name
 	 * @return bool
 	 */
-	public function propertyTemplateExists( string $propertyName ): bool {
+	public function propertyTemplateExists(string $propertyName): bool
+	{
 		$templateName = 'Property/' . $propertyName;
-		$title = $this->pageCreator->makeTitle( $templateName, NS_TEMPLATE );
-		return $title && $this->pageCreator->pageExists( $title );
+		$title = $this->pageCreator->makeTitle($templateName, NS_TEMPLATE);
+		return $title && $this->pageCreator->pageExists($title);
 	}
 
 	/* =========================================================================
@@ -291,22 +293,31 @@ class PropertyTemplateGenerator {
 	 * @param array &$visited Visited properties for circular reference detection
 	 * @return string|null Template wikitext, or null if not defined
 	 */
-	private function getPropertyTemplateCode( PropertyModel $property, array &$visited = [] ): ?string {
+	private function getPropertyTemplateCode(PropertyModel $property, array &$visited = []): ?string
+	{
 		$template = $property->getHasTemplate();
 
-		if ( $template === null || trim( $template ) === '' ) {
+		if ($template === null || trim($template) === '') {
 			return null;
 		}
 
-		$template = trim( $template );
+		$template = trim($template);
+
+		// Decode URL-encoded templates (e.g. %5Bmailto:{{{value}}}%5D)
+		// This allows templates to be stored in SMW properties without breaking parser
+		$decoded = rawurldecode($template);
+		if ($decoded !== $template) {
+			wfDebugLog('structuresync', "Decoded Property template: '$template' -> '$decoded'");
+			$template = $decoded;
+		}
 
 		// Check if this is inline template code (contains HTML tags or wiki markup)
-		if ( $this->isInlineTemplateCode( $template ) ) {
+		if ($this->isInlineTemplateCode($template)) {
 			return $template;
 		}
 
 		// Otherwise, it's a reference to another property - resolve it
-		return $this->resolveTemplateReference( $template, $visited );
+		return $this->resolveTemplateReference($template, $visited);
 	}
 
 	/**
@@ -315,16 +326,17 @@ class PropertyTemplateGenerator {
 	 * @param string $value Template value
 	 * @return bool True if inline code, false if reference
 	 */
-	private function isInlineTemplateCode( string $value ): bool {
-		$trimmed = ltrim( $value );
+	private function isInlineTemplateCode(string $value): bool
+	{
+		$trimmed = ltrim($value);
 
 		// If it contains HTML tags, wiki markup, link syntax, or template calls, treat as inline code
-		if ( strpbrk( $trimmed, '<[{{' ) !== false || strpos( $trimmed, '{{{' ) !== false ) {
+		if (strpbrk($trimmed, '<[{{') !== false || strpos($trimmed, '{{{') !== false) {
 			return true;
 		}
 
 		// Links like [mailto:...] don't contain {{, so check for leading '['
-		if ( $trimmed !== '' && $trimmed[0] === '[' ) {
+		if ($trimmed !== '' && $trimmed[0] === '[') {
 			return true;
 		}
 
@@ -351,25 +363,26 @@ class PropertyTemplateGenerator {
 	 * @param array &$visited Visited properties for circular reference detection
 	 * @return string|null Template delegation call
 	 */
-	private function resolveTemplateReference( string $propertyName, array &$visited = [] ): ?string {
-		wfDebugLog( 'structuresync', "Resolving template reference: {$propertyName}" );
-		
+	private function resolveTemplateReference(string $propertyName, array &$visited = []): ?string
+	{
+		wfDebugLog('structuresync', "Resolving template reference: {$propertyName}");
+
 		// Detect circular references
-		if ( in_array( $propertyName, $visited, true ) ) {
-			wfLogWarning( "StructureSync: Circular template reference detected for $propertyName" );
+		if (in_array($propertyName, $visited, true)) {
+			wfLogWarning("StructureSync: Circular template reference detected for $propertyName");
 			return null;
 		}
 		$visited[] = $propertyName;
 
 		// Check if the referenced template exists or will be generated
 		$templateName = 'Property/' . $propertyName;
-		
+
 		// Generate a simple delegation call with NO spaces around pipes
 		// Each template handles its own {{{1|{{{value|}}}}}} fallback pattern
 		$delegationCall = '{{' . $templateName . '|{{{1}}}}}';
-		
-		wfDebugLog( 'structuresync', "Resolved '{$propertyName}' to delegation: {$delegationCall}" );
-		
+
+		wfDebugLog('structuresync', "Resolved '{$propertyName}' to delegation: {$delegationCall}");
+
 		return $delegationCall;
 	}
 
@@ -382,30 +395,31 @@ class PropertyTemplateGenerator {
 	 * @param string $propertyName Property name for documentation
 	 * @return string Complete template page content
 	 */
-	private function wrapTemplateContent( string $templateCode, string $propertyName ): string {
+	private function wrapTemplateContent(string $templateCode, string $propertyName): string
+	{
 		$lines = [];
 
 		$lines[] = '<noinclude>';
 		$lines[] = '<!-- AUTO-GENERATED by StructureSync -->';
-		$lines[] = '<!-- Property template for: ' . htmlspecialchars( $propertyName ) . ' -->';
+		$lines[] = '<!-- Property template for: ' . htmlspecialchars($propertyName) . ' -->';
 		$lines[] = '<!-- Safe to edit. Changes are preserved during regeneration. -->';
 		$lines[] = '';
 		$lines[] = '== Usage ==';
-		$lines[] = '<pre>{{ Property/' . htmlspecialchars( $propertyName ) . ' | value }}</pre>';
+		$lines[] = '<pre>{{ Property/' . htmlspecialchars($propertyName) . ' | value }}</pre>';
 		$lines[] = '';
 		$lines[] = '== Parameters ==';
 		$lines[] = '* {{para|1}} or {{para|value}} - The property value to display';
 		$lines[] = '</noinclude>';
 		$lines[] = '<includeonly>';
-		
+
 		// Replace {{{value}}} placeholder with proper MW template parameter syntax
 		// This allows the template to accept the value as parameter 1 or named parameter 'value'
-		$processedCode = str_replace( '{{{value}}}', '{{{1|{{{value|}}}}}}', $templateCode );
-		
+		$processedCode = str_replace('{{{value}}}', '{{{1|{{{value|}}}}}}', $templateCode);
+
 		$lines[] = $processedCode;
 		$lines[] = '</includeonly>';
 
-		return implode( "\n", $lines );
+		return implode("\n", $lines);
 	}
 
 	/**
@@ -415,7 +429,8 @@ class PropertyTemplateGenerator {
 	 *
 	 * @return string Template page content
 	 */
-	private function generateDefaultTemplateContent(): string {
+	private function generateDefaultTemplateContent(): string
+	{
 		$lines = [];
 
 		$lines[] = '<noinclude>';
@@ -432,71 +447,13 @@ class PropertyTemplateGenerator {
 		$lines[] = '</noinclude>';
 		$lines[] = '<includeonly>{{#if: {{{label|}}}|<span class="ss-label">{{{label}}}:</span> }}{{{1|{{{value|}}}}}}</includeonly>';
 
-		return implode( "\n", $lines );
+		return implode("\n", $lines);
 	}
 
 	/* =========================================================================
 	 * PROPERTY TYPE TEMPLATES
 	 * ========================================================================= */
 
-	/**
-	 * Generate common property type templates (Email, URL, etc.).
-	 *
-	 * These can be referenced by properties via [[Has template::Email]].
-	 * Uses wikitext syntax (not HTML) for proper MediaWiki rendering.
-	 *
-	 * Note: Whitespace trimming is handled at the delegation level
-	 * (in resolveTemplateReference) to avoid nested template whitespace issues.
-	 *
-	 * @return array Result with counts
-	 */
-	public function generateCommonPropertyTypeTemplates(): array {
-		$types = [
-			// For Email, use external link syntax [url text] instead of [[mailto:...]]
-			// because [[...]] syntax interprets pipes as separators which breaks {{{1|{{{value|}}}}}}
-			'Email' => '[mailto:{{{value}}} {{{value}}}]',
-			
-			// URL - prepends https:// to make it a valid external link
-			// Note: Users should provide URLs without protocol (e.g., "example.com" not "https://example.com")
-			// If full URL is provided, it will have double protocol but still work in most cases
-			'URL'   => '[https://{{{value}}} {{{value}}}]',
-			
-			// Image is fine with [[File:...]] since we don't need pipes in the filename
-			'Image' => '[[File:{{{value}}}|thumb|200px]]',
-		];
 
-		$generated = 0;
-		$errors = [];
-
-		foreach ( $types as $typeName => $code ) {
-			$templateName = 'Property/' . $typeName;
-			// wrapTemplateContent will replace {{{value}}} with proper parameter syntax
-			$content = $this->wrapTemplateContent( $code, $typeName );
-
-			$title = $this->pageCreator->makeTitle( $templateName, NS_TEMPLATE );
-			if ( !$title ) {
-				$errors[] = "Failed to create title for {$templateName}";
-				continue;
-			}
-
-			$success = $this->pageCreator->createOrUpdatePage(
-				$title,
-				$content,
-				'StructureSync: Generated common property type template'
-			);
-
-			if ( $success ) {
-				$generated++;
-			} else {
-				$errors[] = "Failed to write template {$templateName}";
-			}
-		}
-
-		return [
-			'success'   => empty( $errors ),
-			'generated' => $generated,
-			'errors'    => $errors,
-		];
-	}
 }
 
