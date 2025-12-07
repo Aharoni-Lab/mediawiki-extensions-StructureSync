@@ -35,6 +35,16 @@ class PageCreator {
      * PAGE CREATION / UPDATE
      * ===================================================================== */
 
+    /** @var string|null Last error message */
+    private ?string $lastError = null;
+
+    /**
+     * Get the last error message from a failed operation.
+     */
+    public function getLastError(): ?string {
+        return $this->lastError;
+    }
+
     /**
      * Create or update a wiki page with new content.
      *
@@ -46,6 +56,7 @@ class PageCreator {
      * @return bool
      */
     public function createOrUpdatePage(Title $title, string $content, string $summary, int $flags = 0): bool {
+        $this->lastError = null;
         try {
             $wikiPage = $this->wikiPageFactory->newFromTitle($title);
             $updater = $wikiPage->newPageUpdater($this->user);
@@ -59,11 +70,31 @@ class PageCreator {
 			);
 			
 			// MW 1.36+: saveRevision() throws on failure and returns RevisionRecord on success.
-			return $revRecord !== null;
+			if ( $revRecord === null ) {
+				$status = $updater->getStatus();
+				$errors = $status->getErrors();
+				$errorMsg = $errors ? $status->getMessage()->text() : 'Unknown error';
+				
+				// "No change" is not really an error - the page already has the correct content
+				if ( stripos( $errorMsg, 'no change was made' ) !== false ) {
+					wfDebugLog( 'structuresync', "No change needed: " . $title->getPrefixedText() );
+					return true;
+				}
+				
+				$this->lastError = $errorMsg;
+				wfLogWarning("StructureSync: Failed to save '{$title->getPrefixedText()}': {$errorMsg}");
+				wfDebugLog( 'structuresync', "SAVE RETURNED NULL: " . $title->getPrefixedText() . " - " . $errorMsg );
+				return false;
+			}
+			
+			wfDebugLog( 'structuresync', "Successfully saved: " . $title->getPrefixedText() );
+			return true;
 			
 
         } catch (\Exception $e) {
+            $this->lastError = $e->getMessage();
             wfLogWarning("StructureSync: Exception saving '{$title->getPrefixedText()}': " . $e->getMessage());
+            wfDebugLog( 'structuresync', "SAVE EXCEPTION: " . $title->getPrefixedText() . " - " . $e->getMessage() . "\nStack: " . $e->getTraceAsString() );
             return false;
         }
     }
@@ -174,9 +205,10 @@ class PageCreator {
 
         try {
             $services = MediaWikiServices::getInstance();
-            $deletePage = $services->getDeletePageFactory()->newDeletePage($title);
+            $wikiPage = $this->wikiPageFactory->newFromTitle($title);
+            $deletePage = $services->getDeletePageFactory()->newDeletePage($wikiPage, $this->user);
 
-            $status = $deletePage->deleteUnsafe($reason, $this->user);
+            $status = $deletePage->deleteUnsafe($reason);
 
             if (!$status->isOK()) {
                 wfLogWarning("StructureSync: Failed deleting '{$title->getPrefixedText()}': " . $status->getMessage(false));

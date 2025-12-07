@@ -18,8 +18,138 @@
           "Has optional property",
           "Has required subobject",
           "Has optional subobject",
-          "Has display format",
+          "Render as",
           "Has display header property"
+        ]
+      },
+      "subobjects": {
+        "required": [],
+        "optional": []
+      }
+    },
+    "TemplateFormat": {
+      "parents": [],
+      "label": "Template Format",
+      "description": "Defines how category properties should be composed into display templates.",
+      "targetNamespace": "Category",
+      "properties": {
+        "required": [
+          "Has description"
+        ],
+        "optional": [
+          "Display label",
+          "Has wrapper template",
+          "Has property template pattern",
+          "Has section separator",
+          "Has empty value behavior"
+        ]
+      },
+      "subobjects": {
+        "required": [],
+        "optional": []
+      }
+    },
+    "TemplateFormat/Sections": {
+      "parents": ["TemplateFormat"],
+      "label": "Sections Format",
+      "description": "Section-based layout format with grouped properties.",
+      "targetNamespace": "Category",
+      "properties": {
+        "required": [
+          "Has description"
+        ],
+        "optional": [
+          "Display label",
+          "Has wrapper template",
+          "Has property template pattern",
+          "Has section separator",
+          "Has empty value behavior"
+        ]
+      },
+      "subobjects": {
+        "required": [],
+        "optional": []
+      }
+    },
+    "TemplateFormat/Table": {
+      "parents": ["TemplateFormat"],
+      "label": "Table Format",
+      "description": "Table layout format with property labels and values in rows.",
+      "targetNamespace": "Category",
+      "properties": {
+        "required": [
+          "Has description"
+        ],
+        "optional": [
+          "Display label",
+          "Has wrapper template",
+          "Has property template pattern",
+          "Has section separator",
+          "Has empty value behavior"
+        ]
+      },
+      "subobjects": {
+        "required": [],
+        "optional": []
+      }
+    },
+    "TemplateFormat/Infobox": {
+      "parents": ["TemplateFormat"],
+      "label": "Infobox Format",
+      "description": "Side infobox layout format for compact display.",
+      "targetNamespace": "Category",
+      "properties": {
+        "required": [
+          "Has description"
+        ],
+        "optional": [
+          "Display label",
+          "Has wrapper template",
+          "Has property template pattern",
+          "Has section separator",
+          "Has empty value behavior"
+        ]
+      },
+      "subobjects": {
+        "required": [],
+        "optional": []
+      }
+    },
+    "TemplateFormat/PlainText": {
+      "parents": ["TemplateFormat"],
+      "label": "Plain Text Format",
+      "description": "Plain text list format with simple bullet points.",
+      "targetNamespace": "Category",
+      "properties": {
+        "required": [
+          "Has description"
+        ],
+        "optional": [
+          "Display label",
+          "Has wrapper template",
+          "Has property template pattern",
+          "Has section separator",
+          "Has empty value behavior"
+        ]
+      },
+      "subobjects": {
+        "required": [],
+        "optional": []
+      }
+    },
+    "PropertyType": {
+      "parents": [],
+      "label": "Property Type",
+      "description": "Defines reusable property display patterns.",
+      "targetNamespace": "Category",
+      "properties": {
+        "required": [
+          "Has description",
+          "Has template code"
+        ],
+        "optional": [
+          "Display label",
+          "Has template parameter"
         ]
       },
       "subobjects": {
@@ -83,16 +213,11 @@
       "allowedNamespace": "Subobject",
       "allowsMultipleValues": true
     },
-    "Has display format": {
-      "datatype": "Text",
-      "label": "Has display format",
-      "description": "Controls how properties are rendered in the display template.",
-      "allowedValues": [
-        "Sections",
-        "Table",
-        "Side infobox",
-        "Plain text"
-      ],
+    "Render as": {
+      "datatype": "Page",
+      "label": "Render as",
+      "description": "Template format to use for rendering the category display.",
+      "allowedNamespace": "Category",
       "allowsMultipleValues": false
     },
     "Has display header property": {
@@ -153,31 +278,51 @@
       "description": "For autocomplete, restricts value suggestions to a given namespace.",
       "allowsMultipleValues": false
     },
-    "Has display template": {
+    "Has template": {
       "datatype": "Text",
-      "label": "Has display template",
-      "description": "Custom HTML/wikitext template for rendering a property value.",
+      "label": "Has template",
+      "description": "Template page name or PropertyType reference for rendering this property.",
       "allowsMultipleValues": false
     },
-    "Has display type": {
+    "Has wrapper template": {
       "datatype": "Text",
-      "label": "Has display type",
-      "description": "Built-in display type for rendering property values.",
+      "label": "Has wrapper template",
+      "description": "Outer wrapper wikitext pattern for template formats.",
+      "allowsMultipleValues": false
+    },
+    "Has property template pattern": {
+      "datatype": "Text",
+      "label": "Has property template pattern",
+      "description": "Pattern for wrapping each property template call in a format.",
+      "allowsMultipleValues": false
+    },
+    "Has section separator": {
+      "datatype": "Text",
+      "label": "Has section separator",
+      "description": "Separator text between sections or properties in a format.",
+      "allowsMultipleValues": false
+    },
+    "Has empty value behavior": {
+      "datatype": "Text",
+      "label": "Has empty value behavior",
+      "description": "How to handle properties with empty values (show/hide).",
       "allowedValues": [
-        "Email",
-        "URL",
-        "Image",
-        "Boolean",
-        "none"
+        "show",
+        "hide"
       ],
       "allowsMultipleValues": false
     },
-    "Has display pattern": {
-      "datatype": "Page",
-      "label": "Has display pattern",
-      "description": "References another property whose display template should be reused.",
-      "allowedNamespace": "Property",
+    "Has template code": {
+      "datatype": "Text",
+      "label": "Has template code",
+      "description": "Wikitext template code for a PropertyType.",
       "allowsMultipleValues": false
+    },
+    "Has template parameter": {
+      "datatype": "Text",
+      "label": "Has template parameter",
+      "description": "Parameter names for property type templates.",
+      "allowsMultipleValues": true
     },
     "Has subobject type": {
       "datatype": "Page",

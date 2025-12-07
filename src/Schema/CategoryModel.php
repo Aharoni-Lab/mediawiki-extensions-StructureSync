@@ -14,6 +14,7 @@ use InvalidArgumentException;
  *   label: string
  *   description: string
  *   targetNamespace: string|null
+ *   renderAs: string|null - TemplateFormat category reference
  *
  *   properties:
  *     required: string[]
@@ -45,6 +46,7 @@ class CategoryModel {
     private string $description;
 
     private ?string $targetNamespace;
+    private ?string $renderAs;
 
     private array $requiredProperties;
     private array $optionalProperties;
@@ -86,6 +88,11 @@ class CategoryModel {
 
         $ns = $data['targetNamespace'] ?? null;
         $this->targetNamespace = ($ns !== null && trim($ns) !== '') ? trim($ns) : null;
+
+        /* -------------------- Render Format -------------------- */
+
+        $renderAs = $data['renderAs'] ?? null;
+        $this->renderAs = ($renderAs !== null && trim($renderAs) !== '') ? trim($renderAs) : null;
 
         /* -------------------- Properties -------------------- */
 
@@ -162,6 +169,10 @@ class CategoryModel {
 
     public function getTargetNamespace(): ?string {
         return $this->targetNamespace;
+    }
+
+    public function getRenderAs(): ?string {
+        return $this->renderAs;
     }
 
     /* -------------------- Properties -------------------- */
@@ -279,6 +290,7 @@ class CategoryModel {
                 'label' => $this->label,
                 'description' => $this->description,
                 'targetNamespace' => $this->targetNamespace,
+                'renderAs' => $this->renderAs ?? $parent->getRenderAs(),
                 'properties' => [
                     'required' => $mergedRequired,
                     'optional' => $mergedOptional,
@@ -404,6 +416,10 @@ class CategoryModel {
 
         if ($this->targetNamespace !== null) {
             $out['targetNamespace'] = $this->targetNamespace;
+        }
+
+        if ($this->renderAs !== null) {
+            $out['renderAs'] = $this->renderAs;
         }
 
         return $out;

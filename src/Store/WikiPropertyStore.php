@@ -50,7 +50,7 @@ class WikiPropertyStore {
             'allowedCategory'     => null,
             'allowedNamespace'    => null,
             'allowsMultipleValues'=> false,
-            'display'             => [],   // Empty canonical display block
+            'hasTemplate'         => null,
         ];
 
         return new PropertyModel($canonical, $data);
@@ -169,20 +169,20 @@ class WikiPropertyStore {
         $out['allowsMultipleValues'] =
             $this->fetchBoolean($sdata, 'Allows multiple values');
 
-        /* -------------------- Display Configuration -------------------- */
-        $displayType = $this->fetchOne($sdata, 'Has display type', 'text');
-        $displayTemplate = $this->fetchOne($sdata, 'Has display template', 'text');
-        $displayPattern = $this->fetchOne($sdata, 'Has display pattern', 'property');
+        /* -------------------- Template Configuration -------------------- */
+        $hasTemplate = $this->fetchOne($sdata, 'Has template', 'text');
 
-        if ($displayType || $displayTemplate || $displayPattern) {
-            wfDebugLog('structuresync', "WikiPropertyStore: Display config for property - type: " . ($displayType ?? 'null') . ", template: " . ($displayTemplate ? 'SET' : 'null') . ", pattern: " . ($displayPattern ?? 'null'));
+        if ($hasTemplate) {
+            $out['hasTemplate'] = $hasTemplate;
         }
-
-        $out['display'] = [
-            'type' => $displayType,
-            'template' => $displayTemplate,
-            'fromProperty' => $displayPattern,
-        ];
+        
+        // Backward compatibility: try reading old display properties
+        if (!$hasTemplate) {
+            $displayTemplate = $this->fetchOne($sdata, 'Has display template', 'text');
+            if ($displayTemplate) {
+                $out['hasTemplate'] = $displayTemplate;
+            }
+        }
 
         // Clean null/empty
         return array_filter(
@@ -311,6 +311,11 @@ class WikiPropertyStore {
 
         if ($p->getAllowedNamespace() !== null) {
             $lines[] = '[[Allows value from namespace::' . $p->getAllowedNamespace() . ']]';
+        }
+
+        // Template reference
+        if ($p->getHasTemplate() !== null) {
+            $lines[] = '[[Has template::' . $p->getHasTemplate() . ']]';
         }
 
         return implode("\n", $lines);

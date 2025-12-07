@@ -14,11 +14,7 @@ use InvalidArgumentException;
  *   - allowedValues       (string[])
  *   - rangeCategory       (string|null)
  *   - subpropertyOf       (string|null)
- *   - display:            array{
- *                             type: ?string,
- *                             template: ?string,
- *                             fromProperty: ?string
- *                         }
+ *   - hasTemplate         (string|null) - Template page name or PropertyType reference
  *   - allowedCategory     (string|null)
  *   - allowedNamespace    (string|null)
  *   - allowsMultipleValues (bool)
@@ -37,8 +33,7 @@ class PropertyModel {
     private ?string $rangeCategory;
     private ?string $subpropertyOf;
 
-    /** @var array{type:?string, template:?string, fromProperty:?string} */
-    private array $display;
+    private ?string $hasTemplate;
 
     private ?string $allowedCategory;
     private ?string $allowedNamespace;
@@ -105,19 +100,18 @@ class PropertyModel {
             ? trim($subOf)
             : null;
 
-        /* -------------------- Display Block -------------------- */
-        $display = $data['display'] ?? [];
-        if (!is_array($display)) {
-            throw new InvalidArgumentException(
-                "Property '{$name}': 'display' must be an array if provided."
-            );
+        /* -------------------- Template -------------------- */
+        // Read from new hasTemplate field
+        $template = $data['hasTemplate'] ?? null;
+        
+        // Backward compatibility: read from old display['template'] if hasTemplate not set
+        if ($template === null && isset($data['display']['template'])) {
+            $template = $data['display']['template'];
         }
-
-        $this->display = [
-            'type'         => isset($display['type']) ? $this->cleanNullableString($display['type']) : null,
-            'template'     => isset($display['template']) ? $this->cleanNullableString($display['template']) : null,
-            'fromProperty' => isset($display['fromProperty']) ? $this->cleanNullableString($display['fromProperty']) : null,
-        ];
+        
+        $this->hasTemplate = ($template !== null && trim($template) !== '')
+            ? trim($template)
+            : null;
 
         /* -------------------- Autocomplete restrictions -------------------- */
         $cat = $data['allowedCategory'] ?? null;
@@ -211,15 +205,14 @@ class PropertyModel {
 
     public function getSubpropertyOf(): ?string { return $this->subpropertyOf; }
 
-    /* Display config */
-    public function getDisplayType(): ?string { return $this->display['type']; }
-    public function getDisplayTemplate(): ?string { return $this->display['template']; }
-    public function getDisplayPattern(): ?string { return $this->display['fromProperty']; }
-
-    public function hasDisplayConfig(): bool {
-        return $this->display['type'] !== null ||
-               $this->display['template'] !== null ||
-               $this->display['fromProperty'] !== null;
+    /* Template config */
+    public function getHasTemplate(): ?string { return $this->hasTemplate; }
+    
+    // Backward compatibility aliases
+    public function getDisplayTemplate(): ?string { return $this->hasTemplate; }
+    
+    public function hasTemplate(): bool {
+        return $this->hasTemplate !== null;
     }
 
     /* Autocomplete config */
@@ -246,7 +239,7 @@ class PropertyModel {
             'allowedValues'       => $this->allowedValues,
             'rangeCategory'       => $this->rangeCategory,
             'subpropertyOf'       => $this->subpropertyOf,
-            'display'             => $this->display,
+            'hasTemplate'         => $this->hasTemplate,
             'allowedCategory'     => $this->allowedCategory,
             'allowedNamespace'    => $this->allowedNamespace,
             'allowsMultipleValues'=> $this->allowsMultipleValues,

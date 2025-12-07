@@ -94,9 +94,9 @@ echo "  - Core meta-properties (created by extension-config.json)..."
 echo "  - Text properties..."
 create_property "Has full name" "The full name of a person." "Text" "[[Display label::Full Name]]"
 
-# Biography with custom display template (using semantic properties)
-create_property "Has biography" "Biography or description text." "Text" "[[Has display template::<div class=\"bio-block\" style=\"background: #f9f9f9; padding: 10px; border-left: 3px solid #0066cc; margin: 10px 0;\"><div class=\"bio-label\" style=\"font-weight: bold; color: #0066cc; margin-bottom: 5px;\">Biography</div><div class=\"bio-value\" style=\"white-space: pre-wrap;\">{{{value}}}</div></div>]]
-[[Has display type::none]]"
+# Biography with custom display template (using wikitext with HTML allowed via rawhtml extension if needed)
+# For now, using simple wikitext - users can customize the template page directly for styling
+create_property "Has biography" "Biography or description text." "Text" "[[Has template::'''{{{value}}}''']]"
 
 create_property "Has research interests" "Research interests and expertise areas." "Text" "[[Display label::Research Interests]]"
 create_property "Has office location" "Office or workspace location." "Text" ""
@@ -107,20 +107,19 @@ create_property "Has office location" "Office or workspace location." "Text" ""
 echo "  - Contact information properties..."
 
 # Create display pattern properties (templates that other properties can reference)
+# Use double-bracket syntax for reliable parsing in template contexts
 echo "  - Display pattern properties..."
-create_property "Email" "Display pattern for rendering email addresses." "Text" "[[Has display template::<a href="mailto:{{{value}}}">{{{value}}}</a>]]
-[[Has display type::none]]
+create_property "Email" "Display pattern for rendering email addresses." "Text" "[[Has template::[[mailto:{{{value}}}]]]]
 [[Category:Display Patterns]]"
 
-create_property "URL" "Display pattern for rendering website URLs." "Text" "[[Has display template::<a href=\"{{{value}}}\" target=\"_blank\" rel=\"noopener noreferrer\">{{{value}}}</a>]]
-[[Has display type::none]]
+create_property "URL" "Display pattern for rendering website URLs." "Text" "[[Has template::[{{{value}}}]]]
 [[Category:Display Patterns]]"
 
 # Contact properties using display patterns
 create_property "Has email" "Email address." "Email" "[[Display label::Email]]
-[[Has display pattern::Property:Email]]"
+[[Has template::Email]]"
 create_property "Has phone" "Phone number." "Telephone number" ""
-create_property "Has website" "Personal or lab website URL." "URL" "[[Has display pattern::Property:URL]]"
+create_property "Has website" "Personal or lab website URL." "URL" "[[Has template::URL]]"
 create_property "Has orcid" "ORCID identifier (e.g., 0000-0000-0000-0000)." "Text" ""
 
 # ==========================================
@@ -145,8 +144,8 @@ create_property "Has room number" "Office or room number." "Number" ""
 # Property Type 5: Boolean Properties
 # ==========================================
 echo "  - Boolean properties..."
-create_property "Has active status" "Whether the person is currently active." "Boolean" "[[Has display type::Boolean]]"
-create_property "Has public profile" "Whether profile is publicly visible." "Boolean" "[[Has display type::Boolean]]"
+create_property "Has active status" "Whether the person is currently active." "Boolean" ""
+create_property "Has public profile" "Whether profile is publicly visible." "Boolean" ""
 
 # ==========================================
 # Property Type 6: Page/Reference Properties
@@ -198,7 +197,7 @@ create_property "Has employment status" "Employment or appointment status." "Tex
 # ==========================================
 echo "  - Specialized properties..."
 create_property "Has geographic location" "Geographic coordinates (lat, lon)." "Geographic coordinate" ""
-create_property "Has code repository" "URL to code repository (GitHub, GitLab, etc.)." "URL" "[[Has display type::URL]]"
+create_property "Has code repository" "URL to code repository (GitHub, GitLab, etc.)." "URL" ""
 
 # ==========================================
 # Property Type 9: Academic/Research Properties

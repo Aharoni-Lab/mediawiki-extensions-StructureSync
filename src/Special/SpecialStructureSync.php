@@ -939,11 +939,92 @@ class SpecialStructureSync extends SpecialPage
 		$templateGenerator = new TemplateGenerator();
 		$formGenerator = new FormGenerator();
 		$displayGenerator = new DisplayStubGenerator();
+		$propertyTemplateGenerator = new \MediaWiki\Extension\StructureSync\Generator\PropertyTemplateGenerator();
 
 		$progressContainerOpen = false;
 
 		try {
-			// Determine target categories
+			// Step 1: Generate property templates first (needed by display templates)
+			$output->addHTML(
+				Html::element( 'div', [ 'class' => 'structuresync-progress-item' ],
+					'Generating property templates...'
+				)
+			);
+			
+			// Generate default property template
+			$defaultResult = $propertyTemplateGenerator->generateDefaultPropertyTemplate();
+			if ( !empty( $defaultResult['success'] ) ) {
+				$output->addHTML(
+					Html::element( 'div', [ 'class' => 'structuresync-progress-item' ],
+						'  ✓ Generated Template:Property/Default'
+					)
+				);
+			}
+			
+			// Generate common property type templates (Email, URL, etc.)
+			$commonResult = $propertyTemplateGenerator->generateCommonPropertyTypeTemplates();
+			if ( !empty( $commonResult['generated'] ) ) {
+				$output->addHTML(
+					Html::element( 'div', [ 'class' => 'structuresync-progress-item' ],
+						'  ✓ Generated ' . $commonResult['generated'] . ' common property type templates'
+					)
+				);
+			}
+			
+			// Generate templates for all properties
+			$allResult = $propertyTemplateGenerator->generateAllPropertyTemplates();
+			if ( !empty( $allResult['generated'] ) ) {
+				$msg = '  ✓ Generated ' . $allResult['generated'] . ' property templates';
+				if ( !empty( $allResult['skipped'] ) ) {
+					$msg .= ' (skipped ' . $allResult['skipped'] . ' meta-properties)';
+				}
+				$output->addHTML(
+					Html::element( 'div', [ 'class' => 'structuresync-progress-item' ],
+						$msg
+					)
+				);
+			}
+			if ( !empty( $allResult['errors'] ) ) {
+				$errorCount = count( $allResult['errors'] );
+				$output->addHTML(
+					Html::element( 'div', [ 'class' => 'structuresync-progress-item error' ],
+						"  ✗ {$errorCount} property templates failed to generate"
+					)
+				);
+				// Show first 5 errors with details
+				$displayErrors = array_slice( $allResult['errors'], 0, 5 );
+				foreach ( $displayErrors as $error ) {
+					$output->addHTML(
+						Html::element( 'div', [ 'class' => 'structuresync-progress-item error' ],
+							'    ' . $error
+						)
+					);
+				}
+				if ( $errorCount > 5 ) {
+					$output->addHTML(
+						Html::element( 'div', [ 'class' => 'structuresync-progress-item' ],
+							"    ... and " . ( $errorCount - 5 ) . " more errors"
+						)
+					);
+				}
+			}
+			// Show debug details if requested
+			if ( $request->getBool( 'debug' ) && !empty( $allResult['details'] ) ) {
+				$output->addHTML(
+					Html::element( 'div', [ 'class' => 'structuresync-progress-item' ],
+						'Property template details:'
+					)
+				);
+				foreach ( $allResult['details'] as $detail ) {
+					$output->addHTML(
+						Html::element( 'div', [ 'class' => 'structuresync-progress-item' ],
+							'    ' . $detail
+						)
+					);
+				}
+			}
+			
+			// Step 2: Determine target categories
 			if ($categoryName === '') {
 				$categories = $categoryStore->getAllCategories();
 			} else {
