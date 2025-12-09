@@ -139,8 +139,6 @@
 		"structuresync": "structuresync-log-header"
 	},
 	"LogActionsHandlers": {
-		"structuresync/import": "LogFormatter",
-		"structuresync/export": "LogFormatter",
 		"structuresync/generate": "LogFormatter"
 	},
 	"manifest_version": 2

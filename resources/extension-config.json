@@ -18,8 +18,8 @@
           "Has optional property",
           "Has required subobject",
           "Has optional subobject",
-          "Render as",
-          "Has display header property"
+          "Has display header property",
+          "Has display format"
         ]
       },
       "subobjects": {
@@ -50,7 +50,9 @@
       }
     },
     "TemplateFormat/Sections": {
-      "parents": ["TemplateFormat"],
+      "parents": [
+        "TemplateFormat"
+      ],
       "label": "Sections Format",
       "description": "Section-based layout format with grouped properties.",
       "targetNamespace": "Category",
@@ -72,7 +74,9 @@
       }
     },
     "TemplateFormat/Table": {
-      "parents": ["TemplateFormat"],
+      "parents": [
+        "TemplateFormat"
+      ],
       "label": "Table Format",
       "description": "Table layout format with property labels and values in rows.",
       "targetNamespace": "Category",
@@ -94,7 +98,9 @@
       }
     },
     "TemplateFormat/Infobox": {
-      "parents": ["TemplateFormat"],
+      "parents": [
+        "TemplateFormat"
+      ],
       "label": "Infobox Format",
       "description": "Side infobox layout format for compact display.",
       "targetNamespace": "Category",
@@ -116,7 +122,9 @@
       }
     },
     "TemplateFormat/PlainText": {
-      "parents": ["TemplateFormat"],
+      "parents": [
+        "TemplateFormat"
+      ],
       "label": "Plain Text Format",
       "description": "Plain text list format with simple bullet points.",
       "targetNamespace": "Category",
@@ -213,19 +221,22 @@
       "allowedNamespace": "Subobject",
       "allowsMultipleValues": true
     },
-    "Render as": {
-      "datatype": "Page",
-      "label": "Render as",
-      "description": "Template format to use for rendering the category display.",
-      "allowedNamespace": "Category",
-      "allowsMultipleValues": false
-    },
     "Has display header property": {
       "datatype": "Page",
       "label": "Has display header property",
       "description": "Properties to display prominently in the header of the page.",
       "allowedNamespace": "Property",
       "allowsMultipleValues": true
+    },
+    "Has display format": {
+      "datatype": "Text",
+      "label": "Has display format",
+      "description": "Format for the display template (e.g. table, sidebox).",
+      "allowedValues": [
+        "table",
+        "sidebox"
+      ],
+      "allowsMultipleValues": false
     },
     "Has display section name": {
       "datatype": "Text",
@@ -333,5 +344,3 @@
     }
   }
 }
-
-

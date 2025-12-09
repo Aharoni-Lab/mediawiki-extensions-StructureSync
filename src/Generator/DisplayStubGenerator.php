@@ -88,10 +88,49 @@ class DisplayStubGenerator
      */
     private function buildWikitext(CategoryModel $category): string
     {
+        $format = $category->getDisplayFormat();
+
+        if ($format === 'sidebox') {
+            wfDebugLog('StructureSync', 'Generating sidebox display for ' . $category->getName());
+            return $this->generateSideboxWikitext($category);
+        }
+
+        // Default to table
+        return $this->generateTableWikitext($category);
+    }
+
+    private function generateTableWikitext(CategoryModel $category): string
+    {
         $content = "<includeonly>\n";
         $content .= "{| class=\"wikitable source-structuresync\"\n";
         $content .= "! Property !! Value\n";
 
+        $content .= $this->generatePropertyRows($category);
+
+        $content .= "|}\n";
+        $content .= "</includeonly><noinclude>[[Category:StructureSync-managed-display]]</noinclude>";
+
+        return $content;
+    }
+
+    private function generateSideboxWikitext(CategoryModel $category): string
+    {
+        // Infobox style: floated right, distinct styling
+        $content = "<includeonly>\n";
+        $content .= "{| class=\"wikitable source-structuresync-sidebox\" style=\"float: right; clear: right; margin: 0 0 1em 1em; width: 300px; background: #f8f9fa; border: 1px solid #a2a9b1; box-shadow: 0 4px 12px rgba(0,0,0,0.05);\"\n";
+        $content .= "|+ style=\"font-size: 120%; font-weight: bold; background-color: #eaecf0;\" | " . $category->getLabel() . "\n";
+
+        $content .= $this->generatePropertyRows($category);
+
+        $content .= "|}\n";
+        $content .= "</includeonly><noinclude>[[Category:StructureSync-managed-display]]</noinclude>";
+
+        return $content;
+    }
+
+    private function generatePropertyRows(CategoryModel $category): string
+    {
+        $out = "";
         foreach ($category->getAllProperties() as $propName) {
             $property = $this->propertyStore->readProperty($propName);
             if ($property) {
@@ -106,15 +145,13 @@ class DisplayStubGenerator
                 // {{ Template:Property/Email | value={{{email|}}} }}
                 $valueCall = "{{" . $renderTemplate . " | value={{{" . $paramName . "|}}} }}";
 
-                $content .= "|-\n";
-                $content .= "| " . $label . " || " . $valueCall . "\n";
+                $out .= "|-\n";
+                // Standard row format works for both table and simplified infobox
+                $out .= "! " . $label . "\n";
+                $out .= "| " . $valueCall . "\n";
             }
         }
-
-        $content .= "|}\n";
-        $content .= "</includeonly><noinclude>[[Category:StructureSync-managed-display]]</noinclude>";
-
-        return $content;
+        return $out;
     }
 
     /**

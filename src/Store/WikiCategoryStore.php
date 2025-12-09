@@ -176,7 +176,7 @@ class WikiCategoryStore
             $out['sections'] = $sections;
         }
         if ($format !== null) {
-            $out['format'] = $format;
+            $out['format'] = strtolower($format);
         }
         if ($templateProp !== null) {
             $out['templateProperty'] = $templateProp;

@@ -866,6 +866,25 @@ class SpecialStructureSync extends SpecialPage
 		$form .= Html::closeElement('select');
 		$form .= Html::closeElement('div');
 
+		$form .= Html::openElement('div', ['class' => 'structuresync-form-group']);
+		$form .= Html::element('input', [
+			'type' => 'checkbox',
+			'name' => 'generate-display',
+			'value' => '1',
+			'id' => 'generate-display-check'
+		]);
+		$form .= Html::element(
+			'label',
+			['for' => 'generate-display-check', 'style' => 'display:inline; margin-left: 0.5em;'],
+			"Force update display templates (e.g. Template:Category/display)"
+		);
+		$form .= Html::element(
+			'p',
+			['class' => 'structuresync-form-help', 'style' => 'margin-top: 0.25em; color: #72777d; font-size: 0.85em;'],
+			"Warning: This replaces any manual customizations to the display structure."
+		);
+		$form .= Html::closeElement('div');
+
 		$form .= Html::hidden('action', 'generate');
 		$form .= Html::hidden('token', $this->getUser()->getEditToken());
 
@@ -1032,7 +1051,11 @@ class SpecialStructureSync extends SpecialPage
 
 					$templateGenerator->generateAllTemplates($effective);
 					$formGenerator->generateAndSaveForm($effective, $ancestors);
-					$displayGenerator->generateOrUpdateDisplayStub($effective);
+
+					// Only generate display stub if explicitly requested (to avoid overwriting customizations)
+					if ($request->getBool('generate-display')) {
+						$displayGenerator->generateOrUpdateDisplayStub($effective);
+					}
 
 					$successCount++;
 				} catch (\Exception $e) {
