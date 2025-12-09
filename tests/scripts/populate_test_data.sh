@@ -84,6 +84,12 @@ echo ""
 echo "==> Creating test properties..."
 
 # ==========================================
+# 0. Meta-Properties (Must be created first)
+# ==========================================
+create_property "Has display template" "Template for displaying property values." "Page" ""
+create_property "Has template" "Points to a template for generic usage." "Page" ""
+
+# ==========================================
 # Core Meta-Properties
 # ==========================================
 echo "  - Core meta-properties (created by extension-config.json)..."
@@ -96,7 +102,7 @@ create_property "Has full name" "The full name of a person." "Text" "[[Display l
 
 # Biography with custom display template (using wikitext with HTML allowed via rawhtml extension if needed)
 # For now, using simple wikitext - users can customize the template page directly for styling
-create_property "Has biography" "Biography or description text." "Text" "[[Has template::'''{{{value}}}''']]"
+create_property "Has biography" "Biography or description text." "Text" "[[Has template::Template:Property/Typography]]"
 
 create_property "Has research interests" "Research interests and expertise areas." "Text" "[[Display label::Research Interests]]"
 create_property "Has office location" "Office or workspace location." "Text" ""
@@ -109,17 +115,12 @@ echo "  - Contact information properties..."
 # Create display pattern properties (templates that other properties can reference)
 # Use double-bracket syntax for reliable parsing in template contexts
 echo "  - Display pattern properties..."
-create_property "Email" "Display pattern for rendering email addresses." "Text" "[[Has template::%5Bmailto:{{{value}}} {{{value}}}%5D]]
-[[Category:Display Patterns]]"
 
-create_property "URL" "Display pattern for rendering website URLs." "Text" "[[Has template::%5B{{{value}}} {{{value}}}%5D]]
-[[Category:Display Patterns]]"
 
 # Contact properties using display patterns
-create_property "Has email" "Email address." "Email" "[[Display label::Email]]
-[[Has template::Email]]"
+create_property "Has email" "Email address." "Email" "[[Has template::Template:Property/Email]]"
 create_property "Has phone" "Phone number." "Telephone number" ""
-create_property "Has website" "Personal or lab website URL." "URL" "[[Has template::URL]]"
+create_property "Has website" "Personal or lab website URL." "URL" "[[Has template::Template:Property/Link]]"
 create_property "Has orcid" "ORCID identifier (e.g., 0000-0000-0000-0000)." "Text" ""
 
 # ==========================================
@@ -229,17 +230,7 @@ create_category "Person" "[[Has description::A person in our organization.]]
 [[Has optional property::Property:Has website]]
 [[Has optional property::Property:Has birth date]]
 
-{{#subobject:display_section_0
-|Has display section name=Contact Information
-|Has display section property=Property:Has email
-|Has display section property=Property:Has phone
-|Has display section property=Property:Has website
-}}
-
-{{#subobject:display_section_1
-|Has display section name=Biography
-|Has display section property=Property:Has biography
-}}"
+[[Has template::Template:Category/table]]"
 
 # LabMember category (base category for lab members)
 create_category "LabMember" "[[Has description::A member of the lab.]]
@@ -783,6 +774,40 @@ create_page "Protein_Folding_Project" "{{Project
 }}
 
 [[Category:Project]]"
+
+echo ""
+
+
+echo "==> Creating Template Infrastructure..."
+
+# Templates 1-3 removed (Legacy dynamic display system)
+
+# 4. Template:Property/Default
+create_page "Template:Property/Default" "<includeonly>{{{value}}}</includeonly>"
+
+# 5. Template:Property/Email
+create_page "Template:Property/Email" "<includeonly>[mailto:{{{value|}}} {{{value|}}}]</includeonly>"
+
+# 6. Template:Property/Link
+create_page "Template:Property/Link" "<includeonly>[{{{value|}}} {{{value|}}}]</includeonly>"
+
+# 7. Template:Property/Typography (for Biography)
+create_page "Template:Property/Typography" "<includeonly>'''{{{value|}}}'''</includeonly>"
+
+echo "  - Creating Category:Test Table View..."
+create_category "Test Table View" "[[Has description::Category using property-driven table format.]]
+[[Has display template::Property:Display format/Table]]
+[[Has required property::Property:Has full name]]
+[[Has required property::Property:Has email]]
+[[Has optional property::Property:Has phone]]"
+
+echo "  - Creating Test Page for Table View..."
+create_page "Table_View_Test_Page" "{{Test Table View
+|full_name=Table Verification User
+|email=table@example.com
+|phone=123-456-7890
+}}
+[[Category:Test Table View]]"
 
 echo ""
 echo "==> Refreshing Semantic MediaWiki data..."

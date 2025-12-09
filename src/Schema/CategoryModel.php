@@ -37,7 +37,8 @@ use InvalidArgumentException;
  *
  * Fully immutable. No parsing or backward-compatibility.
  */
-class CategoryModel {
+class CategoryModel
+{
 
     private string $name;
     private array $parents;
@@ -57,11 +58,26 @@ class CategoryModel {
     private array $displayConfig;
     private array $formConfig;
 
+    /* -------------------- New Display System -------------------- */
+
+    /** @var ?PropertyModel Property defining the display format */
+    private ?PropertyModel $displayTemplateProperty = null;
+
+    /** @var ?string Raw wikitext from the display template property */
+    private ?string $displayTemplateSource = null;
+
+    /** @var PropertyModel[] All properties to be displayed */
+    private array $displayProperties = [];
+
+    /** @var array<string, PropertyModel[]> Properties grouped by section */
+    private array $displaySectionModels = [];
+
     /* -------------------------------------------------------------------------
      * CONSTRUCTOR
      * ------------------------------------------------------------------------- */
 
-    public function __construct(string $name, array $data = []) {
+    public function __construct(string $name, array $data = [])
+    {
 
         $name = trim($name);
         if ($name === '') {
@@ -83,8 +99,8 @@ class CategoryModel {
 
         /* -------------------- Metadata -------------------- */
 
-        $this->label = (string)($data['label'] ?? $name);
-        $this->description = (string)($data['description'] ?? '');
+        $this->label = (string) ($data['label'] ?? $name);
+        $this->description = (string) ($data['description'] ?? '');
 
         $ns = $data['targetNamespace'] ?? null;
         $this->targetNamespace = ($ns !== null && trim($ns) !== '') ? trim($ns) : null;
@@ -151,41 +167,50 @@ class CategoryModel {
      * ACCESSORS (read-only)
      * ------------------------------------------------------------------------- */
 
-    public function getName(): string {
+    public function getName(): string
+    {
         return $this->name;
     }
 
-    public function getParents(): array {
+    public function getParents(): array
+    {
         return $this->parents;
     }
 
-    public function getLabel(): string {
+    public function getLabel(): string
+    {
         return $this->label !== '' ? $this->label : $this->name;
     }
 
-    public function getDescription(): string {
+    public function getDescription(): string
+    {
         return $this->description;
     }
 
-    public function getTargetNamespace(): ?string {
+    public function getTargetNamespace(): ?string
+    {
         return $this->targetNamespace;
     }
 
-    public function getRenderAs(): ?string {
+    public function getRenderAs(): ?string
+    {
         return $this->renderAs;
     }
 
     /* -------------------- Properties -------------------- */
 
-    public function getRequiredProperties(): array {
+    public function getRequiredProperties(): array
+    {
         return $this->requiredProperties;
     }
 
-    public function getOptionalProperties(): array {
+    public function getOptionalProperties(): array
+    {
         return $this->optionalProperties;
     }
 
-    public function getAllProperties(): array {
+    public function getAllProperties(): array
+    {
         return array_values(array_unique(
             array_merge($this->requiredProperties, $this->optionalProperties)
         ));
@@ -193,41 +218,50 @@ class CategoryModel {
 
     /* -------------------- Subobjects -------------------- */
 
-    public function getRequiredSubobjects(): array {
+    public function getRequiredSubobjects(): array
+    {
         return $this->requiredSubobjects;
     }
 
-    public function getOptionalSubobjects(): array {
+    public function getOptionalSubobjects(): array
+    {
         return $this->optionalSubobjects;
     }
 
-    public function hasSubobjects(): bool {
+    public function hasSubobjects(): bool
+    {
         return $this->requiredSubobjects !== [] || $this->optionalSubobjects !== [];
     }
 
     /* -------------------- Display + Forms -------------------- */
 
-    public function getDisplayConfig(): array {
+    public function getDisplayConfig(): array
+    {
         return $this->displayConfig;
     }
 
-    public function getDisplayHeaderProperties(): array {
+    public function getDisplayHeaderProperties(): array
+    {
         return $this->displayConfig['header'] ?? [];
     }
 
-    public function getDisplayFormat(): ?string {
+    public function getDisplayFormat(): ?string
+    {
         return $this->displayConfig['format'] ?? null;
     }
 
-    public function getDisplaySections(): array {
+    public function getDisplaySections(): array
+    {
         return $this->displayConfig['sections'] ?? [];
     }
 
-    public function getFormConfig(): array {
+    public function getFormConfig(): array
+    {
         return $this->formConfig;
     }
 
-    public function getFormSections(): array {
+    public function getFormSections(): array
+    {
         return $this->formConfig['sections'] ?? [];
     }
 
@@ -235,7 +269,8 @@ class CategoryModel {
      * MERGING (CATEGORY + PARENT)
      * ------------------------------------------------------------------------- */
 
-    public function mergeWithParent(CategoryModel $parent): CategoryModel {
+    public function mergeWithParent(CategoryModel $parent): CategoryModel
+    {
 
         /* -------------------- Properties -------------------- */
 
@@ -309,7 +344,8 @@ class CategoryModel {
      * MERGE HELPERS
      * ------------------------------------------------------------------------- */
 
-    private static function mergeDisplayConfigs(array $parent, array $child): array {
+    private static function mergeDisplayConfigs(array $parent, array $child): array
+    {
         if ($parent === []) {
             return $child;
         }
@@ -324,7 +360,7 @@ class CategoryModel {
         }
 
         if (isset($child['format'])) {
-            $merged['format'] = trim((string)$child['format']);
+            $merged['format'] = trim((string) $child['format']);
         }
 
         if (isset($child['sections'])) {
@@ -352,7 +388,8 @@ class CategoryModel {
         return $merged;
     }
 
-    private static function mergeFormConfigs(array $parent, array $child): array {
+    private static function mergeFormConfigs(array $parent, array $child): array
+    {
         if ($parent === []) {
             return $child;
         }
@@ -373,10 +410,11 @@ class CategoryModel {
      * UTILITIES
      * ------------------------------------------------------------------------- */
 
-    private static function normalizeList(array $list): array {
+    private static function normalizeList(array $list): array
+    {
         $out = [];
         foreach ($list as $v) {
-            $v = trim((string)$v);
+            $v = trim((string) $v);
             if ($v !== '' && !in_array($v, $out, true)) {
                 $out[] = $v;
             }
@@ -388,7 +426,8 @@ class CategoryModel {
      * EXPORT
      * ------------------------------------------------------------------------- */
 
-    public function toArray(): array {
+    public function toArray(): array
+    {
         $out = [
             'parents' => $this->parents,
             'label' => $this->label,
@@ -423,5 +462,53 @@ class CategoryModel {
         }
 
         return $out;
+    }
+
+    /* -------------------------------------------------------------------------
+     * NEW DISPLAY SYSTEM ACCESSORS
+     * ------------------------------------------------------------------------- */
+
+    public function setDisplayTemplateProperty(?PropertyModel $property): void
+    {
+        $this->displayTemplateProperty = $property;
+    }
+
+    public function getDisplayTemplateProperty(): ?PropertyModel
+    {
+        return $this->displayTemplateProperty;
+    }
+
+    public function setDisplayTemplateSource(?string $source): void
+    {
+        $this->displayTemplateSource = $source;
+    }
+
+    public function getDisplayTemplateSource(): ?string
+    {
+        return $this->displayTemplateSource;
+    }
+
+    /** @param PropertyModel[] $properties */
+    public function setDisplayProperties(array $properties): void
+    {
+        $this->displayProperties = $properties;
+    }
+
+    /** @return PropertyModel[] */
+    public function getDisplayProperties(): array
+    {
+        return $this->displayProperties;
+    }
+
+    /** @param array<string, PropertyModel[]> $sections */
+    public function setDisplaySectionModels(array $sections): void
+    {
+        $this->displaySectionModels = $sections;
+    }
+
+    /** @return array<string, PropertyModel[]> */
+    public function getDisplaySectionModels(): array
+    {
+        return $this->displaySectionModels;
     }
 }

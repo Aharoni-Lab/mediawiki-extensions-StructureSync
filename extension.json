@@ -46,14 +46,10 @@
 	],
 	"Hooks": {
 		"SetupAfterCache": "MediaWiki\\Extension\\StructureSync\\Hooks\\StructureSyncSetupHooks::onSetupAfterCache",
-		"LoadExtensionSchemaUpdates": "MediaWiki\\Extension\\StructureSync\\Hooks\\StructureSyncSetupHooks::onLoadExtensionSchemaUpdates",
-		"ParserFirstCallInit": "MediaWiki\\Extension\\StructureSync\\Parser\\DisplayParserFunctions::onParserFirstCallInit"
+		"LoadExtensionSchemaUpdates": "MediaWiki\\Extension\\StructureSync\\Hooks\\StructureSyncSetupHooks::onLoadExtensionSchemaUpdates"
 	},
 	"AutoloadClasses": {
-		"MediaWiki\\Extension\\StructureSync\\Hooks\\StructureSyncSetupHooks": "src/Hooks/StructureSyncSetupHooks.php",
-		"MediaWiki\\Extension\\StructureSync\\Parser\\DisplayParserFunctions": "src/Parser/DisplayParserFunctions.php",
-		"MediaWiki\\Extension\\StructureSync\\Display\\DisplayRenderer": "src/Display/DisplayRenderer.php",
-		"MediaWiki\\Extension\\StructureSync\\Display\\DisplaySpecBuilder": "src/Display/DisplaySpecBuilder.php"
+		"MediaWiki\\Extension\\StructureSync\\Hooks\\StructureSyncSetupHooks": "src/Hooks/StructureSyncSetupHooks.php"
 	},
 	"AutoloadNamespaces": {
 		"MediaWiki\\Extension\\StructureSync\\": "src/"
@@ -148,4 +144,3 @@
 	},
 	"manifest_version": 2
 }
-

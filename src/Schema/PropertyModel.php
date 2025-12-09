@@ -19,7 +19,8 @@ use InvalidArgumentException;
  *   - allowedNamespace    (string|null)
  *   - allowsMultipleValues (bool)
  */
-class PropertyModel {
+class PropertyModel
+{
 
     private string $name;
     private string $datatype;
@@ -35,16 +36,19 @@ class PropertyModel {
 
     private ?string $hasTemplate;
 
+    /** @var string|null Raw template wikitext from "Has template" */
+    private ?string $templateSource = null;
+
     private ?string $allowedCategory;
     private ?string $allowedNamespace;
-
     private bool $allowsMultipleValues;
 
     /* -------------------------------------------------------------------------
      * CONSTRUCTOR
      * ---------------------------------------------------------------------- */
 
-    public function __construct(string $name, array $data = []) {
+    public function __construct(string $name, array $data = [])
+    {
 
         /* -------------------- Name -------------------- */
         $name = trim($name);
@@ -59,16 +63,16 @@ class PropertyModel {
                 "Property '{$name}' must define a 'datatype' field."
             );
         }
-        $this->datatype = $this->normalizeDatatype((string)$data['datatype']);
+        $this->datatype = $this->normalizeDatatype((string) $data['datatype']);
 
         /* -------------------- Label -------------------- */
         $this->label = !empty($data['label'])
-            ? (string)$data['label']
+            ? (string) $data['label']
             : $this->autoGenerateLabel($this->name);
 
         /* -------------------- Description -------------------- */
         $this->description = isset($data['description'])
-            ? trim((string)$data['description'])
+            ? trim((string) $data['description'])
             : '';
 
         /* -------------------- Allowed Values -------------------- */
@@ -103,15 +107,17 @@ class PropertyModel {
         /* -------------------- Template -------------------- */
         // Read from new hasTemplate field
         $template = $data['hasTemplate'] ?? null;
-        
+
         // Backward compatibility: read from old display['template'] if hasTemplate not set
         if ($template === null && isset($data['display']['template'])) {
             $template = $data['display']['template'];
         }
-        
+
         $this->hasTemplate = ($template !== null && trim($template) !== '')
             ? trim($template)
             : null;
+
+        $this->templateSource = $data['templateSource'] ?? null;
 
         /* -------------------- Autocomplete restrictions -------------------- */
         $cat = $data['allowedCategory'] ?? null;
@@ -132,8 +138,9 @@ class PropertyModel {
      * NORMALIZATION
      * ---------------------------------------------------------------------- */
 
-    private function cleanNullableString($value): ?string {
-        $v = trim((string)$value);
+    private function cleanNullableString($value): ?string
+    {
+        $v = trim((string) $value);
         return $v !== '' ? $v : null;
     }
 
@@ -142,19 +149,35 @@ class PropertyModel {
      *
      * @return string[]
      */
-    public static function getValidDatatypes(): array {
+    public static function getValidDatatypes(): array
+    {
         return [
-            'Text', 'Page', 'Date', 'Number', 'Email', 'URL', 'Boolean',
-            'Code', 'Geographic coordinate', 'Quantity', 'Temperature',
-            'Telephone number', 'Annotation URI', 'External identifier',
-            'Keyword', 'Monolingual text', 'Record', 'Reference',
+            'Text',
+            'Page',
+            'Date',
+            'Number',
+            'Email',
+            'URL',
+            'Boolean',
+            'Code',
+            'Geographic coordinate',
+            'Quantity',
+            'Temperature',
+            'Telephone number',
+            'Annotation URI',
+            'External identifier',
+            'Keyword',
+            'Monolingual text',
+            'Record',
+            'Reference',
         ];
     }
 
     /**
      * Normalize and validate SMW datatype.
      */
-    private function normalizeDatatype(string $datatype): string {
+    private function normalizeDatatype(string $datatype): string
+    {
         $valid = self::getValidDatatypes();
 
         $lower = strtolower($datatype);
@@ -175,7 +198,8 @@ class PropertyModel {
         return 'Text';
     }
 
-    private function autoGenerateLabel(string $name): string {
+    private function autoGenerateLabel(string $name): string
+    {
         $clean = preg_replace('/^Has[_ ]+/i', '', $name);
         $clean = str_replace('_', ' ', $clean);
         return ucwords($clean);
@@ -185,72 +209,130 @@ class PropertyModel {
      * ACCESSORS
      * ---------------------------------------------------------------------- */
 
-    public function getName(): string { return $this->name; }
-    public function getDatatype(): string { return $this->datatype; }
-    public function getLabel(): string { return $this->label; }
-    public function getDescription(): string { return $this->description; }
+    public function getName(): string
+    {
+        return $this->name;
+    }
+    public function getDatatype(): string
+    {
+        return $this->datatype;
+    }
+    public function getLabel(): string
+    {
+        return $this->label;
+    }
+    public function getDescription(): string
+    {
+        return $this->description;
+    }
 
-    public function getAllowedValues(): array { return $this->allowedValues; }
-    public function hasAllowedValues(): bool { return $this->allowedValues !== []; }
+    public function getAllowedValues(): array
+    {
+        return $this->allowedValues;
+    }
+    public function hasAllowedValues(): bool
+    {
+        return $this->allowedValues !== [];
+    }
 
-    public function getRangeCategory(): ?string { return $this->rangeCategory; }
+    public function getRangeCategory(): ?string
+    {
+        return $this->rangeCategory;
+    }
 
-    public function isPageType(): bool {
+    public function isPageType(): bool
+    {
         return $this->datatype === 'Page';
     }
 
-    public function isCategoryRestrictedPageType(): bool {
+    public function isCategoryRestrictedPageType(): bool
+    {
         return $this->isPageType() && $this->rangeCategory !== null;
     }
 
-    public function getSubpropertyOf(): ?string { return $this->subpropertyOf; }
+    public function shouldAutocomplete(): bool
+    {
+        return (
+            ($this->allowedCategory !== null && $this->allowedCategory !== '') ||
+            ($this->allowedNamespace !== null && $this->allowedNamespace !== '')
+        );
+    }
+
+    public function getSnakeCaseName(): string
+    {
+        $clean = preg_replace('/^Has[_ ]+/i', '', $this->name);
+        $clean = str_replace([' ', '-'], '_', $clean);
+        return strtolower($clean);
+    }
+
+    public function getSubpropertyOf(): ?string
+    {
+        return $this->subpropertyOf;
+    }
 
     /* Template config */
-    public function getHasTemplate(): ?string { return $this->hasTemplate; }
-    
+    public function getHasTemplate(): ?string
+    {
+        return $this->hasTemplate;
+    }
+
+    public function getRenderTemplate(): string
+    {
+        return $this->hasTemplate ?? 'Template:Property/Default';
+    }
+
+    public function getTemplateSource(): ?string
+    {
+        return $this->templateSource;
+    }
+
+    public function setTemplateSource(?string $source): void
+    {
+        $this->templateSource = $source;
+    }
+
     // Backward compatibility aliases
-    public function getDisplayTemplate(): ?string { return $this->hasTemplate; }
-    
-    public function hasTemplate(): bool {
-        return $this->hasTemplate !== null;
+
+    public function getAllowedCategory(): ?string
+    {
+        return $this->allowedCategory;
+    }
+    public function getAllowedNamespace(): ?string
+    {
+        return $this->allowedNamespace;
     }
 
-    /* Autocomplete config */
-    public function shouldAutocomplete(): bool {
-        return !$this->hasAllowedValues() &&
-            ($this->allowedCategory !== null || $this->allowedNamespace !== null);
+    public function allowsMultipleValues(): bool
+    {
+        return $this->allowsMultipleValues;
     }
-
-    public function getAllowedCategory(): ?string { return $this->allowedCategory; }
-    public function getAllowedNamespace(): ?string { return $this->allowedNamespace; }
-
-    public function allowsMultipleValues(): bool { return $this->allowsMultipleValues; }
 
     /* -------------------------------------------------------------------------
      * EXPORT
      * ---------------------------------------------------------------------- */
 
-    public function toArray(): array {
+    public function toArray(): array
+    {
 
         $data = [
-            'datatype'            => $this->datatype,
-            'label'               => $this->label,
-            'description'         => $this->description,
-            'allowedValues'       => $this->allowedValues,
-            'rangeCategory'       => $this->rangeCategory,
-            'subpropertyOf'       => $this->subpropertyOf,
-            'hasTemplate'         => $this->hasTemplate,
-            'allowedCategory'     => $this->allowedCategory,
-            'allowedNamespace'    => $this->allowedNamespace,
-            'allowsMultipleValues'=> $this->allowsMultipleValues,
+            'datatype' => $this->datatype,
+            'label' => $this->label,
+            'description' => $this->description,
+            'allowedValues' => $this->allowedValues,
+            'rangeCategory' => $this->rangeCategory,
+            'subpropertyOf' => $this->subpropertyOf,
+            'hasTemplate' => $this->hasTemplate,
+            'allowedCategory' => $this->allowedCategory,
+            'allowedNamespace' => $this->allowedNamespace,
+            'allowsMultipleValues' => $this->allowsMultipleValues,
         ];
 
         // Remove nulls + empty arrays, but preserve boolean false
         return array_filter(
             $data,
             static fn($v) =>
-                $v !== null &&
-                !(is_array($v) && $v === [])
+            $v !== null &&
+            !(is_array($v) && $v === [])
         );
     }
 
@@ -258,7 +340,8 @@ class PropertyModel {
      * SMW Type
      * ---------------------------------------------------------------------- */
 
-    public function getSMWType(): string {
+    public function getSMWType(): string
+    {
         return $this->datatype;
     }
 }

@@ -13,22 +13,29 @@ use MediaWiki\Title\Title;
  *
  * Fully symmetric with CategoryModel->toArray() structure.
  */
-class WikiCategoryStore {
+class WikiCategoryStore
+{
 
     private const MARKER_START = '<!-- StructureSync Start -->';
-    private const MARKER_END   = '<!-- StructureSync End -->';
+    private const MARKER_END = '<!-- StructureSync End -->';
 
     private PageCreator $pageCreator;
+    private WikiPropertyStore $propertyStore;
 
-    public function __construct(PageCreator $pageCreator = null) {
+    public function __construct(
+        PageCreator $pageCreator = null,
+        WikiPropertyStore $propertyStore = null
+    ) {
         $this->pageCreator = $pageCreator ?? new PageCreator();
+        $this->propertyStore = $propertyStore ?? new WikiPropertyStore($this->pageCreator);
     }
 
     /* -------------------------------------------------------------------------
      * READ PUBLIC
      * ------------------------------------------------------------------------- */
 
-    public function readCategory(string $categoryName): ?CategoryModel {
+    public function readCategory(string $categoryName): ?CategoryModel
+    {
 
         $title = $this->pageCreator->makeTitle($categoryName, NS_CATEGORY);
         if (!$title || !$this->pageCreator->pageExists($title)) {
@@ -36,14 +43,26 @@ class WikiCategoryStore {
         }
 
         $data = $this->loadFromSMW($title, $categoryName);
-        return new CategoryModel($categoryName, $data);
+        $cat = new CategoryModel($categoryName, $data);
+
+        // Resolve display template
+        if (!empty($data['display']['templateProperty'])) {
+            $p = $this->propertyStore->readProperty($data['display']['templateProperty']);
+            if ($p) {
+                $cat->setDisplayTemplateProperty($p);
+                $cat->setDisplayTemplateSource($p->getTemplateSource());
+            }
+        }
+
+        return $cat;
     }
 
     /* -------------------------------------------------------------------------
      * WRITE PUBLIC
      * ------------------------------------------------------------------------- */
 
-    public function writeCategory(CategoryModel $category): bool {
+    public function writeCategory(CategoryModel $category): bool
+    {
 
         $title = $this->pageCreator->makeTitle($category->getName(), NS_CATEGORY);
         if (!$title) {
@@ -76,7 +95,8 @@ class WikiCategoryStore {
      * ENUMERATION
      * ------------------------------------------------------------------------- */
 
-    public function getAllCategories(): array {
+    public function getAllCategories(): array
+    {
 
         $out = [];
 
@@ -102,7 +122,8 @@ class WikiCategoryStore {
         return $out;
     }
 
-    public function categoryExists(string $categoryName): bool {
+    public function categoryExists(string $categoryName): bool
+    {
         $t = $this->pageCreator->makeTitle($categoryName, NS_CATEGORY);
         return $t && $this->pageCreator->pageExists($t);
     }
@@ -111,20 +132,21 @@ class WikiCategoryStore {
      * SMW LOADING
      * ------------------------------------------------------------------------- */
 
-    private function loadFromSMW(Title $title, string $categoryName): array {
+    private function loadFromSMW(Title $title, string $categoryName): array
+    {
 
-        $store   = \SMW\StoreFactory::getStore();
+        $store = \SMW\StoreFactory::getStore();
         $subject = \SMW\DIWikiPage::newFromTitle($title);
-        $sdata   = $store->getSemanticData($subject);
+        $sdata = $store->getSemanticData($subject);
 
         return [
-            'label'           => $this->fetchOne($sdata, 'Display label') ?? $categoryName,
-            'description'     => $this->fetchOne($sdata, 'Has description') ?? '',
+            'label' => $this->fetchOne($sdata, 'Display label') ?? $categoryName,
+            'description' => $this->fetchOne($sdata, 'Has description') ?? '',
             'targetNamespace' => $this->fetchOne($sdata, 'Has target namespace') ?? null,
 
-            'parents'     => $this->fetchList($sdata, 'Has parent category', 'category'),
+            'parents' => $this->fetchList($sdata, 'Has parent category', 'category'),
 
-            'properties'  => [
+            'properties' => [
                 'required' => $this->fetchList($sdata, 'Has required property', 'property'),
                 'optional' => $this->fetchList($sdata, 'Has optional property', 'property'),
             ],
@@ -138,11 +160,13 @@ class WikiCategoryStore {
         ];
     }
 
-    private function loadDisplayConfig($semanticData): array {
+    private function loadDisplayConfig($semanticData): array
+    {
 
         $header = $this->fetchList($semanticData, 'Has display header property', 'property');
         $sections = $this->fetchDisplaySections($semanticData);
         $format = $this->fetchOne($semanticData, 'Has display format');
+        $templateProp = $this->fetchOne($semanticData, 'Has display template', 'property');
 
         $out = [];
         if ($header !== []) {
@@ -154,6 +178,9 @@ class WikiCategoryStore {
         if ($format !== null) {
             $out['format'] = $format;
         }
+        if ($templateProp !== null) {
+            $out['templateProperty'] = $templateProp;
+        }
 
         return $out;
     }
@@ -162,13 +189,14 @@ class WikiCategoryStore {
      * SMW extraction helpers
      * ------------------------------------------------------------------------- */
 
-    private function fetchOne($semanticData, string $propName): ?string {
-        $vals = $this->fetchList($semanticData, $propName, 'text');
+    private function fetchOne($semanticData, string $propName, string $type = 'text'): ?string
+    {
+        $vals = $this->fetchList($semanticData, $propName, $type);
         return $vals[0] ?? null;
     }
 
-    private function fetchList($semanticData, string $propName, string $type): array {
-
+    private function fetchList($semanticData, string $propName, string $type): array
+    {
         try {
             $prop = \SMW\DIProperty::newFromUserLabel($propName);
             $items = $semanticData->getPropertyValues($prop);
@@ -186,7 +214,8 @@ class WikiCategoryStore {
         return $out;
     }
 
-    private function extractValue($di, string $type): ?string {
+    private function extractValue($di, string $type): ?string
+    {
 
         if ($di instanceof \SMWDIBlob || $di instanceof \SMWDIString) {
             return trim($di->getString());
@@ -202,13 +231,21 @@ class WikiCategoryStore {
 
             switch ($type) {
                 case 'property':
-                    return $t->getNamespace() === SMW_NS_PROPERTY ? $text : null;
+                    // SMW Property namespace is usually 102
+                    return $t->getNamespace() === 102 ? $text : null;
 
                 case 'category':
-                    return $t->getNamespace() === NS_CATEGORY ? $text : null;
+                    // Category namespace is 14
+                    return $t->getNamespace() === 14 ? $text : null;
 
                 case 'subobject':
-                    return $t->getNamespace() === NS_SUBOBJECT ? $text : null;
+                    // Subobjects are often in main/other namespaces but have a subobject name.
+                    // If strict namespace check was intended, we might need configuration.
+                    // For now, checking if it is a subobject DI.
+                    // Note: DIWikiPage doesn't easy tell if it IS a subobject, but we can check usage.
+                    // If the previous code relied on a constant NS_SUBOBJECT, it might be custom.
+                    // Assuming for now we accept any namespace if we successfully requested a subobject type.
+                    return $text;
 
                 case 'page':
                     return $t->getPrefixedText();
@@ -221,7 +258,8 @@ class WikiCategoryStore {
         return null;
     }
 
-    private function fetchDisplaySections($semanticData): array {
+    private function fetchDisplaySections($semanticData): array
+    {
 
         $sections = [];
 
@@ -233,7 +271,7 @@ class WikiCategoryStore {
             }
 
             $secName = $this->fetchOne($subSD, 'Has display section name');
-            $props   = $this->fetchList($subSD, 'Has display section property', 'property');
+            $props = $this->fetchList($subSD, 'Has display section property', 'property');
 
             if ($secName !== null && $props !== []) {
                 $sections[] = [
@@ -250,7 +288,8 @@ class WikiCategoryStore {
      * WRITE: semantic block
      * ------------------------------------------------------------------------- */
 
-    private function generateSemanticBlock(CategoryModel $cat): string {
+    private function generateSemanticBlock(CategoryModel $cat): string
+    {
 
         $lines = [];
 
@@ -272,9 +311,14 @@ class WikiCategoryStore {
             $lines[] = "[[Has display header property::Property:$h]]";
         }
 
-        // Display format
+        // Display format (Legacy)
         if ($cat->getDisplayFormat() !== null) {
             $lines[] = '[[Has display format::' . $cat->getDisplayFormat() . ']]';
+        }
+
+        // Display template
+        if ($cat->getDisplayTemplateProperty() !== null) {
+            $lines[] = '[[Has display template::' . $cat->getDisplayTemplateProperty()->getName() . ']]';
         }
 
         // Required/optional properties

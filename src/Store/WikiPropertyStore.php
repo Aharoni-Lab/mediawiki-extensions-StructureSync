@@ -13,14 +13,16 @@ use MediaWiki\Title\Title;
  *
  * Fully semantic: NO wikitext parsing.
  */
-class WikiPropertyStore {
+class WikiPropertyStore
+{
 
     private const MARKER_START = '<!-- StructureSync Start -->';
-    private const MARKER_END   = '<!-- StructureSync End -->';
+    private const MARKER_END = '<!-- StructureSync End -->';
 
     private PageCreator $pageCreator;
 
-    public function __construct(PageCreator $pageCreator = null) {
+    public function __construct(PageCreator $pageCreator = null)
+    {
         $this->pageCreator = $pageCreator ?? new PageCreator();
     }
 
@@ -28,7 +30,8 @@ class WikiPropertyStore {
      * PUBLIC API — READ
      * ------------------------------------------------------------------------- */
 
-    public function readProperty(string $propertyName): ?PropertyModel {
+    public function readProperty(string $propertyName): ?PropertyModel
+    {
 
         $canonical = $this->canonicalize($propertyName);
 
@@ -41,16 +44,16 @@ class WikiPropertyStore {
 
         // Ensure canonical minimal fields
         $data += [
-            'datatype'            => 'Text',
-            'label'               => $canonical,
-            'description'         => '',
-            'allowedValues'       => [],
-            'rangeCategory'       => null,
-            'subpropertyOf'       => null,
-            'allowedCategory'     => null,
-            'allowedNamespace'    => null,
-            'allowsMultipleValues'=> false,
-            'hasTemplate'         => null,
+            'datatype' => 'Text',
+            'label' => $canonical,
+            'description' => '',
+            'allowedValues' => [],
+            'rangeCategory' => null,
+            'subpropertyOf' => null,
+            'allowedCategory' => null,
+            'allowedNamespace' => null,
+            'allowsMultipleValues' => false,
+            'hasTemplate' => null,
         ];
 
         return new PropertyModel($canonical, $data);
@@ -60,7 +63,8 @@ class WikiPropertyStore {
      * PUBLIC API — WRITE
      * ------------------------------------------------------------------------- */
 
-    public function writeProperty(PropertyModel $property): bool {
+    public function writeProperty(PropertyModel $property): bool
+    {
 
         $title = $this->pageCreator->makeTitle($property->getName(), SMW_NS_PROPERTY);
         if (!$title) {
@@ -89,13 +93,15 @@ class WikiPropertyStore {
         );
     }
 
-    public function propertyExists(string $propertyName): bool {
+    public function propertyExists(string $propertyName): bool
+    {
         $canonical = $this->canonicalize($propertyName);
         $t = $this->pageCreator->makeTitle($canonical, SMW_NS_PROPERTY);
         return $t && $this->pageCreator->pageExists($t);
     }
 
-    public function getAllProperties(): array {
+    public function getAllProperties(): array
+    {
 
         $out = [];
 
@@ -126,11 +132,12 @@ class WikiPropertyStore {
      * INTERNAL — LOAD FROM SMW
      * ------------------------------------------------------------------------- */
 
-    private function loadFromSMW(Title $title): array {
+    private function loadFromSMW(Title $title): array
+    {
 
-        $store   = \SMW\StoreFactory::getStore();
+        $store = \SMW\StoreFactory::getStore();
         $subject = \SMW\DIWikiPage::newFromTitle($title);
-        $sdata   = $store->getSemanticData($subject);
+        $sdata = $store->getSemanticData($subject);
 
         $out = [];
 
@@ -170,19 +177,15 @@ class WikiPropertyStore {
             $this->fetchBoolean($sdata, 'Allows multiple values');
 
         /* -------------------- Template Configuration -------------------- */
-        $hasTemplate = $this->fetchOne($sdata, 'Has template', 'text');
+        $hasTemplate = $this->fetchOne($sdata, 'Has template', 'page');
 
         if ($hasTemplate) {
             $out['hasTemplate'] = $hasTemplate;
+            $out['templateSource'] = $hasTemplate;
         }
-        
-        // Backward compatibility: try reading old display properties
-        if (!$hasTemplate) {
-            $displayTemplate = $this->fetchOne($sdata, 'Has display template', 'text');
-            if ($displayTemplate) {
-                $out['hasTemplate'] = $displayTemplate;
-            }
-        }
+
+
+        // Clean null/empty
 
         // Clean null/empty
         return array_filter(
@@ -191,12 +194,14 @@ class WikiPropertyStore {
         );
     }
 
-    private function fetchOne($sd, string $p, string $type = 'text'): ?string {
+    private function fetchOne($sd, string $p, string $type = 'text'): ?string
+    {
         $vals = $this->fetchMany($sd, $p, $type);
         return $vals[0] ?? null;
     }
 
-    private function fetchBoolean($sd, string $prop): bool {
+    private function fetchBoolean($sd, string $prop): bool
+    {
 
         try {
             $p = \SMW\DIProperty::newFromUserLabel($prop);
@@ -214,7 +219,7 @@ class WikiPropertyStore {
             }
             if ($di instanceof \SMWDIBlob || $di instanceof \SMWDIString) {
                 $v = strtolower(trim($di->getString()));
-                if (in_array($v, ['1','true','yes','y','t'], true)) {
+                if (in_array($v, ['1', 'true', 'yes', 'y', 't'], true)) {
                     return true;
                 }
             }
@@ -223,7 +228,8 @@ class WikiPropertyStore {
         return false;
     }
 
-    private function fetchMany($sd, string $p, string $type = 'text'): array {
+    private function fetchMany($sd, string $p, string $type = 'text'): array
+    {
 
         try {
             $prop = \SMW\DIProperty::newFromUserLabel($p);
@@ -244,7 +250,8 @@ class WikiPropertyStore {
         return $out;
     }
 
-    private function extractValue($di, string $type): ?string {
+    private function extractValue($di, string $type): ?string
+    {
 
         if ($di instanceof \SMW\DIWikiPage) {
             $t = $di->getTitle();
@@ -254,12 +261,16 @@ class WikiPropertyStore {
 
             $text = str_replace('_', ' ', $t->getText());
 
-            return match ($type) {
-                'property' => ($t->getNamespace() === SMW_NS_PROPERTY) ? $text : null,
-                'category' => ($t->getNamespace() === NS_CATEGORY) ? $text : null,
-                'page'     => $t->getPrefixedText(),
-                default    => $text,
-            };
+            switch ($type) {
+                case 'property':
+                    return ($t->getNamespace() === 102) ? $text : null;
+                case 'category':
+                    return ($t->getNamespace() === 14) ? $text : null;
+                case 'page':
+                    return $t->getPrefixedText();
+                default:
+                    return $text;
+            }
         }
 
         if ($di instanceof \SMWDIBlob || $di instanceof \SMWDIString) {
@@ -273,7 +284,8 @@ class WikiPropertyStore {
      * INTERNAL — WRITE SEMANTIC BLOCK
      * ------------------------------------------------------------------------- */
 
-    private function buildSemanticBlock(PropertyModel $p): string {
+    private function buildSemanticBlock(PropertyModel $p): string
+    {
 
         $lines = [];
 
@@ -313,8 +325,10 @@ class WikiPropertyStore {
             $lines[] = '[[Allows value from namespace::' . $p->getAllowedNamespace() . ']]';
         }
 
-        // Template reference
-        if ($p->getHasTemplate() !== null) {
+        // Template reference (or source)
+        if ($p->getTemplateSource() !== null) {
+            $lines[] = '[[Has template::' . $p->getTemplateSource() . ']]';
+        } elseif ($p->getHasTemplate() !== null) {
             $lines[] = '[[Has template::' . $p->getHasTemplate() . ']]';
         }
 
@@ -331,27 +345,28 @@ class WikiPropertyStore {
      * @param string $typeId SMW internal type ID
      * @return string Canonical datatype name
      */
-    private function convertSMWTypeIdToCanonical(string $typeId): string {
+    private function convertSMWTypeIdToCanonical(string $typeId): string
+    {
         // Mapping from SMW internal type IDs to canonical names
         static $typeMap = [
-            '_txt'      => 'Text',
-            '_wpg'      => 'Page',
-            '_dat'      => 'Date',
-            '_num'      => 'Number',
-            '_boo'      => 'Boolean',
-            '_uri'      => 'URL',
-            '_ema'      => 'Email',
-            '_tel'      => 'Telephone number',
-            '_cod'      => 'Code',
-            '_geo'      => 'Geographic coordinate',
-            '_qty'      => 'Quantity',
-            '_tem'      => 'Temperature',
-            '_anu'      => 'Annotation URI',
-            '_eid'      => 'External identifier',
-            '_key'      => 'Keyword',
-            '_mlt_rec'  => 'Monolingual text',
-            '_rec'      => 'Record',
-            '_ref_rec'  => 'Reference',
+        '_txt' => 'Text',
+        '_wpg' => 'Page',
+        '_dat' => 'Date',
+        '_num' => 'Number',
+        '_boo' => 'Boolean',
+        '_uri' => 'URL',
+        '_ema' => 'Email',
+        '_tel' => 'Telephone number',
+        '_cod' => 'Code',
+        '_geo' => 'Geographic coordinate',
+        '_qty' => 'Quantity',
+        '_tem' => 'Temperature',
+        '_anu' => 'Annotation URI',
+        '_eid' => 'External identifier',
+        '_key' => 'Keyword',
+        '_mlt_rec' => 'Monolingual text',
+        '_rec' => 'Record',
+        '_ref_rec' => 'Reference',
         ];
 
         // If it's already a canonical name, return as-is
@@ -366,7 +381,8 @@ class WikiPropertyStore {
      * CANONICALIZATION
      * ------------------------------------------------------------------------- */
 
-    private function canonicalize(string $name): string {
+    private function canonicalize(string $name): string
+    {
         $name = trim($name);
         $name = preg_replace('/^Property:/i', '', $name);
         return str_replace('_', ' ', $name);
