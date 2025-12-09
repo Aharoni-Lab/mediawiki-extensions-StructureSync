@@ -214,7 +214,7 @@ class DisplayStubGenerator
     /**
      * Check if the display stub already exists.
      *
-     * @param CategoryModel $category
+     * @param string $categoryName
      * @return bool
      */
     public function displayStubExists(string $categoryName): bool
