@@ -141,5 +141,8 @@
 	"LogActionsHandlers": {
 		"structuresync/generate": "LogFormatter"
 	},
+	"MaintenanceScripts": {
+		"StructureSync:InstallConfig": "maintenance/installConfig.php"
+	},
 	"manifest_version": 2
 }
