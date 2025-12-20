@@ -1,5 +1,5 @@
 /**
- * StructureSync Hierarchy Form Preview
+ * SemanticSchemas Hierarchy Form Preview
  * =====================================
  * Provides live hierarchy preview for category creation forms.
  * 
@@ -11,7 +11,7 @@
  * - Auto-populates free text field with category membership tags
  * 
  * Architecture:
- * - Automatically loads via {{#structuresync_load_form_preview:}}
+ * - Automatically loads via {{#semanticschemas_load_form_preview:}}
  * - Finds parent field using data-parent-field attribute
  * - Debounces updates to avoid excessive API calls
  * - Renders using jQuery DOM manipulation
@@ -19,7 +19,7 @@
  * Requirements:
  * - Container div: <div id="ss-form-hierarchy-preview" data-parent-field="FIELD_NAME">
  * - PageForms tokens/combobox field for parent categories
- * - API endpoint: action=structuresync-hierarchy
+ * - API endpoint: action=semanticschemas-hierarchy
  */
 
 (function (mw, $) {
@@ -38,7 +38,7 @@
 	function debug() {
 		if (DEBUG && window.console && console.log) {
 			var args = Array.prototype.slice.call(arguments);
-			args.unshift('[StructureSync]');
+			args.unshift('[SemanticSchemas]');
 			console.log.apply(console, args);
 		}
 	}
@@ -58,22 +58,22 @@
 		if (!$field || $field.length === 0) {
 			return [];
 		}
-		
+
 		var value = $field.val();
 		var parents = [];
 
 		// Handle different field types
 		// Select2 multi-select returns an array
 		// Text inputs return a string
-		
+
 		if (Array.isArray(value)) {
 			// Select/Select2 field - value is already an array
 			value.forEach(function (item) {
 				var cleaned = (item || '').trim();
-				
+
 				// Remove "Category:" prefix if present
 				cleaned = cleaned.replace(/^Category:\s*/i, '');
-				
+
 				if (cleaned) {
 					parents.push(cleaned);
 				}
@@ -81,19 +81,19 @@
 		} else if (typeof value === 'string') {
 			// Text input - split by delimiters
 			var raw = value.split(/[,\n|;]+/);
-			
+
 			raw.forEach(function (item) {
 				var cleaned = item.trim();
-				
+
 				// Remove "Category:" prefix if present
 				cleaned = cleaned.replace(/^Category:\s*/i, '');
-				
+
 				// PageForms might also wrap in brackets or other markup
 				cleaned = cleaned.replace(/^\[\[|\]\]$/g, '');
-				
+
 				// Remove any trailing/leading whitespace again
 				cleaned = cleaned.trim();
-				
+
 				if (cleaned) {
 					parents.push(cleaned);
 				}
@@ -111,7 +111,7 @@
 	 */
 	function renderPreviewTree($container, hierarchyData) {
 		var rootTitle = hierarchyData.rootCategory || null;
-		
+
 		if (!rootTitle || !hierarchyData.nodes || !hierarchyData.nodes[rootTitle]) {
 			$container.empty().append(
 				$('<p>').addClass('ss-hierarchy-empty').text(
@@ -136,7 +136,7 @@
 
 			var displayName = title.replace(/^Category:/, '');
 			var $li = $('<li>').addClass('ss-preview-node');
-			
+
 			// Mark the virtual (new) category
 			if (title === rootTitle) {
 				$li.addClass('ss-preview-node-virtual');
@@ -159,14 +159,14 @@
 			// If this node has parents, create nested list
 			if (Array.isArray(node.parents) && node.parents.length > 0) {
 				var $ul = $('<ul>').addClass('ss-preview-tree-nested');
-				
+
 				node.parents.forEach(function (parentTitle) {
 					var $childNode = buildNode(parentTitle, depth + 1);
 					if ($childNode) {
 						$ul.append($childNode);
 					}
 				});
-				
+
 				$li.append($ul);
 			}
 
@@ -176,7 +176,7 @@
 		// Build and render the tree
 		var $rootList = $('<ul>').addClass('ss-preview-tree');
 		var $rootNode = buildNode(rootTitle, 0);
-		
+
 		if ($rootNode) {
 			$rootList.append($rootNode);
 		}
@@ -193,7 +193,7 @@
 	 */
 	function renderPreviewProperties($container, hierarchyData) {
 		var props = hierarchyData.inheritedProperties || [];
-		
+
 		if (props.length === 0) {
 			$container.empty().append(
 				$('<p>').addClass('ss-hierarchy-empty').text(
@@ -206,7 +206,7 @@
 		// Separate required and optional
 		var required = [];
 		var optional = [];
-		
+
 		props.forEach(function (p) {
 			var isRequired = (p.required === 1 || p.required === true);
 			if (isRequired) {
@@ -233,11 +233,11 @@
 			$requiredSection.append(
 				$('<h4>').addClass('ss-prop-type-heading').text('Required Properties (' + required.length + ')')
 			);
-			
+
 			var $requiredList = $('<ul>').addClass('ss-prop-list ss-prop-list-by-type');
 			required.forEach(function (p) {
 				var $li = $('<li>').addClass('ss-prop-required');
-				
+
 				var propertyTitle = p.propertyTitle || '';
 				if (propertyTitle) {
 					var propHref = mw.util.getUrl(propertyTitle);
@@ -248,7 +248,7 @@
 							.attr('title', propertyTitle)
 							.text(propDisplayName)
 					);
-					
+
 					// Add source category in parentheses
 					var sourceTitle = p.sourceCategory || '';
 					if (sourceTitle) {
@@ -269,7 +269,7 @@
 				} else {
 					$li.text('(unnamed property)');
 				}
-				
+
 				$requiredList.append($li);
 			});
 			$requiredSection.append($requiredList);
@@ -282,11 +282,11 @@
 			$optionalSection.append(
 				$('<h4>').addClass('ss-prop-type-heading').text('Optional Properties (' + optional.length + ')')
 			);
-			
+
 			var $optionalList = $('<ul>').addClass('ss-prop-list ss-prop-list-by-type');
 			optional.forEach(function (p) {
 				var $li = $('<li>').addClass('ss-prop-optional');
-				
+
 				var propertyTitle = p.propertyTitle || '';
 				if (propertyTitle) {
 					var propHref = mw.util.getUrl(propertyTitle);
@@ -297,7 +297,7 @@
 							.attr('title', propertyTitle)
 							.text(propDisplayName)
 					);
-					
+
 					// Add source category in parentheses
 					var sourceTitle = p.sourceCategory || '';
 					if (sourceTitle) {
@@ -318,7 +318,7 @@
 				} else {
 					$li.text('(unnamed property)');
 				}
-				
+
 				$optionalList.append($li);
 			});
 			$optionalSection.append($optionalList);
@@ -378,9 +378,9 @@
 	 */
 	function updatePreview(categoryName, parentCategories) {
 		debug('updatePreview called:', categoryName, parentCategories);
-		
+
 		var $previewContainer = $('#ss-form-hierarchy-preview');
-		
+
 		if ($previewContainer.length === 0) {
 			debug('Preview container not found');
 			return;
@@ -402,46 +402,46 @@
 		// Make API call
 		var api = new mw.Api();
 		var apiParams = {
-			action: 'structuresync-hierarchy',
+			action: 'semanticschemas-hierarchy',
 			category: categoryName,
 			parents: parentCategories.join('|'),
 			format: 'json'
 		};
-		
+
 		api.get(apiParams).done(function (response) {
 			debug('API response received:', response);
-			
-			var data = response['structuresync-hierarchy'];
+
+			var data = response['semanticschemas-hierarchy'];
 			if (!data) {
-				console.error('[StructureSync] No data in API response');
+				console.error('[SemanticSchemas] No data in API response');
 				$previewContainer.html('<p class="ss-hierarchy-error">Error loading preview.</p>');
 				return;
 			}
 
 			// Build preview HTML
 			var $preview = $('<div>').addClass('ss-preview-wrapper');
-			
+
 			// Tree section
 			var $treeSection = $('<div>').addClass('ss-preview-section');
 			$treeSection.append($('<h4>').text('Inheritance Hierarchy'));
 			var $treeContainer = $('<div>').addClass('ss-preview-tree-container');
 			renderPreviewTree($treeContainer, data);
 			$treeSection.append($treeContainer);
-			
+
 			// Properties section
 			var $propsSection = $('<div>').addClass('ss-preview-section');
 			$propsSection.append($('<h4>').text('Inherited Properties'));
 			var $propsContainer = $('<div>').addClass('ss-preview-props-container');
 			renderPreviewProperties($propsContainer, data);
 			$propsSection.append($propsContainer);
-			
+
 			$preview.append($treeSection, $propsSection);
 			$previewContainer.empty().append($preview);
-			
+
 			debug('Preview rendered successfully');
 
 		}).fail(function (error) {
-			console.error('[StructureSync] API call failed:', error);
+			console.error('[SemanticSchemas] API call failed:', error);
 			$previewContainer.html('<p class="ss-hierarchy-error">Error loading preview. Please check parent category names.</p>');
 		});
 	}
@@ -459,16 +459,16 @@
 	 */
 	function init() {
 		debug('Initializing form preview, URL:', window.location.href);
-		
+
 		// Check if we're on a form page with the preview container
 		var $previewContainer = $('#ss-form-hierarchy-preview');
 		if ($previewContainer.length === 0) {
 			debug('Preview container not found, skipping initialization');
 			return;
 		}
-		
+
 		debug('Preview container found');
-		
+
 		// Only initialize if we're on a PageForms edit page (not the form input page)
 		// PageForms adds specific markers to edit pages
 		var isPageFormsEditPage = (
@@ -476,7 +476,7 @@
 			$('#pfForm').length > 0 ||  // Alternative form ID
 			$('form input[name="wpSave"]').length > 0 // Edit page save button
 		);
-		
+
 		if (!isPageFormsEditPage) {
 			debug('Not on PageForms edit page, skipping initialization');
 			return;
@@ -488,26 +488,26 @@
 		if (matches && matches[1]) {
 			categoryName = decodeURIComponent(matches[1]);
 		}
-		
+
 		var $categoryNameField = $('input[name="page_name"], input[name="category_name"], input[name="Category"]').first();
 		if ($categoryNameField.length > 0 && $categoryNameField.val()) {
 			categoryName = $categoryNameField.val();
 		}
-		
+
 		// Find parent category field using data-parent-field attribute
 		var $parentField = null;
 		var parentFieldId = $previewContainer.data('parent-field');
-		
+
 		debug('Looking for parent field:', parentFieldId);
-		debug('Available select fields:', $('select').map(function() { return $(this).attr('name'); }).get());
-		
+		debug('Available select fields:', $('select').map(function () { return $(this).attr('name'); }).get());
+
 		if (parentFieldId) {
 			// PageForms tokens creates: <select name="Category[field_name][]" class="pfTokens">
 			// Try with brackets first (standard PageForms format)
 			var selector1 = 'select[name*="[' + parentFieldId + ']"]';
 			$parentField = $(selector1).first();
 			debug('Tried selector:', selector1, '- Found:', $parentField.length);
-			
+
 			// If not found, try without brackets (edge case)
 			if ($parentField.length === 0) {
 				var selector2 = 'select[name="' + parentFieldId + '"]';
@@ -515,7 +515,7 @@
 				debug('Tried selector:', selector2, '- Found:', $parentField.length);
 			}
 		}
-		
+
 		// Fallback: auto-detect any field with "parent" in the name
 		if (!$parentField || $parentField.length === 0) {
 			$parentField = $('select[name*="parent"]').first();
@@ -529,7 +529,7 @@
 				errorMsg += ' Looking for field: ' + parentFieldId;
 			}
 			$previewContainer.html('<p class="ss-hierarchy-empty">' + errorMsg + '</p>');
-			console.error('[StructureSync] Parent field not found, preview disabled');
+			console.error('[SemanticSchemas] Parent field not found, preview disabled');
 			return;
 		}
 
@@ -538,7 +538,7 @@
 		// Find the free text field for automatic category tag injection
 		var $freeTextField = $('input[name="pf_free_text"], textarea[name="pf_free_text"]').first();
 		debug('Free text field found:', $freeTextField.length);
-		
+
 		/**
 		 * Update free text field with category membership tags.
 		 * 
@@ -551,20 +551,20 @@
 				debug('No free text field, skipping category tag update');
 				return;
 			}
-			
+
 			var parents = extractParentCategories($parentField);
 			if (parents.length === 0) {
 				$freeTextField.val('');
 				debug('Cleared free text field (no parents)');
 				return;
 			}
-			
+
 			// Build category links - one per line for readability
-			var categoryLinks = parents.map(function(parent) {
+			var categoryLinks = parents.map(function (parent) {
 				var cleanName = parent.replace(/^Category:\s*/i, '');
 				return '[[Category:' + cleanName + ']]';
 			});
-			
+
 			var linkText = categoryLinks.join('\n');
 			$freeTextField.val(linkText);
 			debug('Updated free text field:', linkText);
@@ -573,7 +573,7 @@
 		// Watch for changes to the parent field (debounced)
 		$parentField.on('change', function () {
 			debug('Parent field changed:', $parentField.val());
-			
+
 			// Clear any pending update
 			if (updateTimer !== null) {
 				clearTimeout(updateTimer);
@@ -585,10 +585,10 @@
 				if ($categoryNameField.length > 0 && $categoryNameField.val()) {
 					currentCategory = $categoryNameField.val();
 				}
-				
+
 				var parents = extractParentCategories($parentField);
 				debug('Updating preview - Category:', currentCategory, 'Parents:', parents);
-				
+
 				// Update both the preview and the free text field
 				updatePreview(currentCategory, parents);
 				updateFreeText();
@@ -609,7 +609,7 @@
 				}, UPDATE_DELAY);
 			});
 		}
-		
+
 		// Perform initial render if parent categories are already selected
 		var initialParents = extractParentCategories($parentField);
 		if (initialParents.length > 0) {
