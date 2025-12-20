@@ -168,7 +168,7 @@
       "allowsMultipleValues": false
     },
     "Has template": {
-      "datatype": "Text",
+      "datatype": "Page",
       "label": "Has template",
       "description": "Template page name or PropertyType reference for rendering this property.",
       "allowsMultipleValues": false
