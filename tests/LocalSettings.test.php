@@ -1,9 +1,12 @@
 <?php
+// Server Config
+$wgServer = 'http://localhost:8889';
+
 // Load Platform Extensions Manualy (since we disabled auto-loading)
 
 // Load SMW
 wfLoadExtension('SemanticMediaWiki');
-enableSemantics($wgServer); // Required to activate SMW
+enableSemantics('localhost'); // Required to activate SMW
 
 // SMW Satellites
 wfLoadExtension('SemanticResultFormats');
@@ -33,7 +36,7 @@ $wgDebugDumpSql = false;
 $wgDebugLogFile = '/var/log/mediawiki/debug.log'; // Send other logs to file instead of stdout
 
 // SMW Configuration (from old script)
-enableSemantics('localhost');
+// enableSemantics('localhost'); // Already called above
 $smwgChangePropagationProtection = false;
 $smwgEnabledDeferredUpdate = false;
 $smwgAutoSetupStore = false;

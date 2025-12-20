@@ -526,7 +526,7 @@ docker compose exec -T wiki php extensions/SemanticMediaWiki/maintenance/rebuild
 
 echo ""
 echo "==> Generating templates and forms..."
-docker compose exec -T wiki php extensions/StructureSync/maintenance/regenerateArtifacts.php --generate-display
+docker compose exec -T wiki php /mw-user-extensions/StructureSync/maintenance/regenerateArtifacts.php --generate-display
 
 echo ""
 echo "==> Creating example pages..."
