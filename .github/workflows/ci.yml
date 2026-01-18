@@ -185,7 +185,18 @@ jobs:
       - name: Setup database tables
         working-directory: /var/www/html
         run: |
-          # Run update.php to create tables
+          # First run install.php to create base tables (if not exists)
+          # Then update.php to apply any migrations
+          php maintenance/install.php \
+            --dbserver="$MW_DB_HOST" \
+            --dbname="$MW_DB_NAME" \
+            --dbuser="$MW_DB_USER" \
+            --dbpass="$MW_DB_PASSWORD" \
+            --pass="$MW_ADMIN_PASS" \
+            --scriptpath="" \
+            "SemanticSchemasTest" \
+            "$MW_ADMIN_USER" || true
+
           php maintenance/update.php --quick
 
       - name: Run integration tests
