@@ -83,17 +83,10 @@ jobs:
       - name: Run PHPUnit tests
         run: vendor/bin/phpunit --testsuite unit --testdox
 
-  # Integration tests require the full labki-platform environment with proper
-  # initialization. Run locally with: ./tests/scripts/run-docker-tests.sh integration
-  # TODO: Fix CI integration tests - the labki-platform image needs its entrypoint
-  # to run for proper MediaWiki initialization (LocalSettings.php generation,
-  # extension dependency resolution, etc.)
   integration-test:
     name: Integration Tests
     runs-on: ubuntu-latest
     needs: test
-    # Skip for now - integration tests work locally but CI setup needs work
-    if: false
 
     services:
       db:
@@ -120,7 +113,7 @@ jobs:
         MW_DB_PASSWORD: labki_pass
         MW_ADMIN_USER: Admin
         MW_ADMIN_PASS: CITestPassword123!
-        MW_SKIP_EXTERNAL_DEPENDENCIES: 1
+        MW_DISABLE_PLATFORM_EXTENSIONS: 1
 
     steps:
       - name: Checkout code
@@ -144,12 +137,32 @@ jobs:
       - name: Initialize MediaWiki
         working-directory: /var/www/html
         run: |
-          # Check if the image has an init script
-          if [ -f /docker-entrypoint-init.sh ]; then
-            /docker-entrypoint-init.sh
-          elif [ -f /init.sh ]; then
-            /init.sh
+          # Find the bootstrap.php location in the image
+          BOOTSTRAP_PATH=""
+          for path in /var/www/html/mediawiki/bootstrap.php /mw-config/bootstrap.php /opt/labki/mediawiki/bootstrap.php; do
+            if [ -f "$path" ]; then
+              BOOTSTRAP_PATH="$path"
+              break
+            fi
+          done
+
+          if [ -n "$BOOTSTRAP_PATH" ] && [ ! -f LocalSettings.php ]; then
+            echo "Using labki-platform bootstrap at: $BOOTSTRAP_PATH"
+            # Create LocalSettings.php that uses the bootstrap system
+            cat > LocalSettings.php << EOLSETTINGS
+<?php
+# LocalSettings.php - Generated for CI testing
+# Uses the labki-platform tiered configuration system
+
+if (!defined('MEDIAWIKI')) {
+    exit;
+}
+
+# Load the platform bootstrap
+require_once '$BOOTSTRAP_PATH';
+EOLSETTINGS
           elif [ ! -f LocalSettings.php ]; then
+            echo "No bootstrap found, using MediaWiki installer..."
             # Fallback: run MediaWiki installer manually
             php maintenance/install.php \
               --dbserver="$MW_DB_HOST" \
@@ -161,7 +174,7 @@ jobs:
               "SemanticSchemasTest" \
               "$MW_ADMIN_USER"
 
-            # Include the custom settings file and disable Chameleon
+            # Add user settings include
             cat >> LocalSettings.php << 'EOLSETTINGS'
 
 # Load custom test settings
@@ -171,9 +184,15 @@ if ( file_exists( '/mw-config/LocalSettings.user.php' ) ) {
 EOLSETTINGS
           fi
 
-          # Show what's in LocalSettings.php for debugging
-          echo "=== LocalSettings.php tail ==="
-          tail -20 LocalSettings.php || true
+          # Show configuration for debugging
+          echo "=== LocalSettings.php ==="
+          cat LocalSettings.php || true
+
+      - name: Setup database tables
+        working-directory: /var/www/html
+        run: |
+          # Run update.php to create tables
+          php maintenance/update.php --quick
 
       - name: Run integration tests
         working-directory: /var/www/html
