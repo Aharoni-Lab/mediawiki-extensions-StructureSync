@@ -126,6 +126,11 @@ jobs:
 
       - name: Link extension to MediaWiki
         run: |
+          # Link to /mw-user-extensions (matches LocalSettings.test.php path)
+          mkdir -p /mw-user-extensions
+          rm -rf /mw-user-extensions/SemanticSchemas
+          ln -s $GITHUB_WORKSPACE/extensions/SemanticSchemas /mw-user-extensions/SemanticSchemas
+          # Also link to standard extensions dir for discovery
           rm -rf /var/www/html/extensions/SemanticSchemas
           ln -s $GITHUB_WORKSPACE/extensions/SemanticSchemas /var/www/html/extensions/SemanticSchemas
 
