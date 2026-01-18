@@ -129,10 +129,31 @@ jobs:
           rm -rf /var/www/html/extensions/SemanticSchemas
           ln -s $GITHUB_WORKSPACE/extensions/SemanticSchemas /var/www/html/extensions/SemanticSchemas
 
+      - name: Setup LocalSettings
+        run: |
+          mkdir -p /mw-config
+          cp $GITHUB_WORKSPACE/extensions/SemanticSchemas/tests/LocalSettings.test.php /mw-config/LocalSettings.user.php
+
+      - name: Initialize MediaWiki
+        working-directory: /var/www/html
+        run: |
+          # Run the MediaWiki installer if LocalSettings.php doesn't exist
+          if [ ! -f LocalSettings.php ]; then
+            php maintenance/install.php \
+              --dbserver="$MW_DB_HOST" \
+              --dbname="$MW_DB_NAME" \
+              --dbuser="$MW_DB_USER" \
+              --dbpass="$MW_DB_PASSWORD" \
+              --pass="$MW_ADMIN_PASS" \
+              --scriptpath="" \
+              "SemanticSchemasTest" \
+              "$MW_ADMIN_USER"
+          fi
+
       - name: Run integration tests
         working-directory: /var/www/html
         run: |
-          php tests/phpunit/phpunit.php \
+          composer phpunit -- \
             --configuration extensions/SemanticSchemas/tests/phpunit/integration.xml \
             --exclude-group Broken \
             --testdox
