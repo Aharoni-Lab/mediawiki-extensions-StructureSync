@@ -286,10 +286,10 @@ class DisplayStubGenerator {
 	/**
 	 * Check if a display template has the auto-regenerate marker.
 	 *
-	 * @param \Title $title
+	 * @param \MediaWiki\Title\Title $title
 	 * @return bool True if the template has the marker (safe to regenerate)
 	 */
-	public function hasAutoRegenerateMarker( \Title $title ): bool {
+	public function hasAutoRegenerateMarker( $title ): bool {
 		$content = $this->pageCreator->getPageContent( $title );
 		if ( $content === null ) {
 			return false;
