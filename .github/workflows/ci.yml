@@ -124,7 +124,13 @@ jobs:
       - name: Wait for database
         run: sleep 10
 
+      - name: Link extension to MediaWiki
+        run: |
+          rm -rf /var/www/html/extensions/SemanticSchemas
+          ln -s $GITHUB_WORKSPACE/extensions/SemanticSchemas /var/www/html/extensions/SemanticSchemas
+
       - name: Run integration tests
+        working-directory: /var/www/html
         run: |
           php tests/phpunit/phpunit.php \
             --configuration extensions/SemanticSchemas/tests/phpunit/integration.xml \
