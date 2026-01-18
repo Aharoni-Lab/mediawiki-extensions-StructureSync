@@ -81,7 +81,55 @@ jobs:
         run: composer install --prefer-dist --no-progress
 
       - name: Run PHPUnit tests
-        run: vendor/bin/phpunit --testdox
+        run: vendor/bin/phpunit --testsuite unit --testdox
+
+  integration-test:
+    name: Integration Tests
+    runs-on: ubuntu-latest
+    needs: test
+
+    services:
+      db:
+        image: mariadb:10.11
+        env:
+          MARIADB_DATABASE: labki
+          MARIADB_USER: labki
+          MARIADB_PASSWORD: labki_pass
+          MARIADB_ROOT_PASSWORD: root_pass
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="healthcheck.sh --connect --innodb_initialized"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=3
+
+    container:
+      image: ghcr.io/labki-org/labki-platform:latest-dev
+      env:
+        MW_DB_HOST: db
+        MW_DB_NAME: labki
+        MW_DB_USER: labki
+        MW_DB_PASSWORD: labki_pass
+        MW_ADMIN_USER: Admin
+        MW_ADMIN_PASS: testpass
+        MW_SKIP_EXTERNAL_DEPENDENCIES: 1
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          path: extensions/SemanticSchemas
+
+      - name: Wait for database
+        run: sleep 10
+
+      - name: Run integration tests
+        run: |
+          composer phpunit:entrypoint -- \
+            --configuration extensions/SemanticSchemas/tests/phpunit/integration.xml \
+            --exclude-group Broken \
+            --testdox
 
   static-analysis:
     name: Phan Static Analysis

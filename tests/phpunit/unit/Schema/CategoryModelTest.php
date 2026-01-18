@@ -1,6 +1,6 @@
 <?php
 
-namespace MediaWiki\Extension\SemanticSchemas\Tests\Schema;
+namespace MediaWiki\Extension\SemanticSchemas\Tests\Unit\Schema;
 
 use InvalidArgumentException;
 use MediaWiki\Extension\SemanticSchemas\Schema\CategoryModel;

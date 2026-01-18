@@ -1,6 +1,6 @@
 <?php
 
-namespace MediaWiki\Extension\SemanticSchemas\Tests\Store;
+namespace MediaWiki\Extension\SemanticSchemas\Tests\Unit\Store;
 
 use MediaWiki\Extension\SemanticSchemas\Store\StateManager;
 use PHPUnit\Framework\TestCase;

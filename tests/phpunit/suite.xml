@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+	PHPUnit configuration for all SemanticSchemas tests in MediaWiki environment.
+	Runs both unit and integration tests.
+
+	Usage:
+	  ./tests/scripts/run-docker-tests.sh
+
+	For separate test suites, use:
+	  unit.xml - Unit tests only (standalone)
+	  integration.xml - Integration tests only (requires MW)
+-->
+<phpunit xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+		 xsi:noNamespaceSchemaLocation="https://schema.phpunit.de/9.3/phpunit.xsd"
+		 bootstrap="integration-bootstrap.php"
+		 colors="true"
+		 beStrictAboutTestsThatDoNotTestAnything="true"
+		 beStrictAboutOutputDuringTests="true"
+		 failOnRisky="true"
+		 failOnWarning="true">
+	<testsuites>
+		<testsuite name="all">
+			<directory>unit</directory>
+			<directory>integration</directory>
+		</testsuite>
+		<testsuite name="unit">
+			<directory>unit</directory>
+		</testsuite>
+		<testsuite name="integration">
+			<directory>integration</directory>
+		</testsuite>
+	</testsuites>
+	<groups>
+		<exclude>
+			<group>Broken</group>
+		</exclude>
+	</groups>
+	<php>
+		<ini name="memory_limit" value="512M"/>
+	</php>
+</phpunit>

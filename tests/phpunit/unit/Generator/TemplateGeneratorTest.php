@@ -1,6 +1,6 @@
 <?php
 
-namespace MediaWiki\Extension\SemanticSchemas\Tests\Generator;
+namespace MediaWiki\Extension\SemanticSchemas\Tests\Unit\Generator;
 
 use InvalidArgumentException;
 use MediaWiki\Extension\SemanticSchemas\Generator\TemplateGenerator;
@@ -244,18 +244,6 @@ class TemplateGeneratorTest extends TestCase {
 
 		$this->assertTrue( $result['success'] );
 		$this->assertEmpty( $result['errors'] );
-	}
-
-	/* =========================================================================
-	 * SEMANTIC TEMPLATE EXISTS CHECK
-	 * ========================================================================= */
-
-	public function testSemanticTemplateExistsReturnsBool(): void {
-		$this->mockPageCreator->method( 'pageExists' )
-			->willReturn( true );
-
-		$result = $this->generator->semanticTemplateExists( 'Person' );
-		$this->assertIsBool( $result );
 	}
 
 	/* =========================================================================

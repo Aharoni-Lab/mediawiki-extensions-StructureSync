@@ -1,6 +1,6 @@
 services:
   wiki:
-    image: ghcr.io/labki-org/labki-platform:latest
+    image: ghcr.io/labki-org/labki-platform:latest-dev
     ports:
       - "8889:80"
     environment:
@@ -18,7 +18,7 @@ services:
       - db
 
   jobrunner:
-    image: ghcr.io/labki-org/labki-platform:latest
+    image: ghcr.io/labki-org/labki-platform:latest-dev
     environment:
       MW_DB_HOST: db
       MW_DB_NAME: labki

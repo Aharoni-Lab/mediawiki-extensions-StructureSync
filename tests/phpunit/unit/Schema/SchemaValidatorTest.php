@@ -1,6 +1,6 @@
 <?php
 
-namespace MediaWiki\Extension\SemanticSchemas\Tests\Schema;
+namespace MediaWiki\Extension\SemanticSchemas\Tests\Unit\Schema;
 
 use MediaWiki\Extension\SemanticSchemas\Schema\SchemaValidator;
 use PHPUnit\Framework\TestCase;
