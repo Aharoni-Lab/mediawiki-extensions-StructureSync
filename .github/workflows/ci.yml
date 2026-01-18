@@ -126,7 +126,7 @@ jobs:
 
       - name: Run integration tests
         run: |
-          composer phpunit:entrypoint -- \
+          composer phpunit -- \
             --configuration extensions/SemanticSchemas/tests/phpunit/integration.xml \
             --exclude-group Broken \
             --testdox

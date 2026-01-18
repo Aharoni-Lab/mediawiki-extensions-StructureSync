@@ -45,8 +45,8 @@ else
     echo "Running SemanticSchemas INTEGRATION tests..."
     echo "(Tests marked @group Broken are excluded)"
     echo ""
-    # Use MW's PHPUnit via composer phpunit:entrypoint
-    docker compose exec -T wiki composer phpunit:entrypoint -- \
+    # Use MW's PHPUnit via composer
+    docker compose exec -T wiki composer phpunit -- \
         --configuration "$EXT_PATH/tests/phpunit/integration.xml" \
         --exclude-group Broken \
         "$@"
