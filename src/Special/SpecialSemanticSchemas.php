@@ -870,7 +870,10 @@ class SpecialSemanticSchemas extends SpecialPage {
 		);
 		$form .= Html::element(
 			'p',
-			[ 'class' => 'semanticschemas-form-help', 'style' => 'margin-top: 0.25em; color: #72777d; font-size: 0.85em;' ],
+			[
+				'class' => 'semanticschemas-form-help',
+				'style' => 'margin-top: 0.25em; color: #72777d; font-size: 0.85em;'
+			],
 			"Warning: This replaces any manual customizations to the display structure."
 		);
 		$form .= Html::closeElement( 'div' );

@@ -115,8 +115,11 @@ class DisplayStubGenerator {
 	private function generateSideboxWikitext( CategoryModel $category ): string {
 		// Infobox style: floated right, distinct styling
 		$content = "<includeonly>\n";
-		$content .= "{| class=\"wikitable source-semanticschemas-sidebox\" style=\"float: right; clear: right; margin: 0 0 1em 1em; width: 300px; background: #f8f9fa; border: 1px solid #a2a9b1; box-shadow: 0 4px 12px rgba(0,0,0,0.05);\"\n";
-		$content .= "|+ style=\"font-size: 120%; font-weight: bold; background-color: #eaecf0;\" | " . $category->getLabel() . "\n";
+		$tableStyle = 'float: right; clear: right; margin: 0 0 1em 1em; width: 300px; '
+			. 'background: #f8f9fa; border: 1px solid #a2a9b1; box-shadow: 0 4px 12px rgba(0,0,0,0.05);';
+		$content .= '{| class="wikitable source-semanticschemas-sidebox" style="' . $tableStyle . "\"\n";
+		$captionStyle = 'font-size: 120%; font-weight: bold; background-color: #eaecf0;';
+		$content .= '|+ style="' . $captionStyle . '" | ' . $category->getLabel() . "\n";
 
 		$content .= $this->generatePropertyRows( $category );
 

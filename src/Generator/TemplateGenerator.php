@@ -223,7 +223,9 @@ class TemplateGenerator {
 			}
 
 			/* SMW #ask invocation */
-			$out[] = '{{#ask: [[-Has subobject::{{FULLPAGENAME}}]] [[Has subobject type::Subobject:' . ( $subName ?? '' ) . ']]';
+			$askQuery = '{{#ask: [[-Has subobject::{{FULLPAGENAME}}]] '
+				. '[[Has subobject type::Subobject:' . ( $subName ?? '' ) . ']]';
+			$out[] = $askQuery;
 
 			foreach ( $props as $p ) {
 				$out[] = ' | ?' . ( $p ?? '' );

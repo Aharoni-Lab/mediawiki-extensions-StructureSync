@@ -25,7 +25,6 @@ $cfg['exclude_analysis_directory_list'] = array_merge(
 	]
 );
 
-$cfg['analyzed_file_extensions'] = ['php'];
+$cfg['analyzed_file_extensions'] = [ 'php' ];
 
 return $cfg;
-

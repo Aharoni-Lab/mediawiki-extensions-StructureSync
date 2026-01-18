@@ -354,6 +354,10 @@ class SchemaComparer {
 
 	/**
 	 * Strict, order-sensitive structural comparison.
+	 *
+	 * @param mixed $a First value to compare
+	 * @param mixed $b Second value to compare
+	 * @return bool True if values differ
 	 */
 	private function deepDiffer( $a, $b ): bool {
 		return json_encode( $a ) !== json_encode( $b );

@@ -92,8 +92,14 @@ class PageCreator {
 
 		} catch ( \Exception $e ) {
 			$this->lastError = $e->getMessage();
-			wfLogWarning( "SemanticSchemas: Exception saving '{$title->getPrefixedText()}': " . $e->getMessage() );
-			wfDebugLog( 'semanticschemas', "SAVE EXCEPTION: " . $title->getPrefixedText() . " - " . $e->getMessage() . "\nStack: " . $e->getTraceAsString() );
+			wfLogWarning(
+				"SemanticSchemas: Exception saving '{$title->getPrefixedText()}': " . $e->getMessage()
+			);
+			wfDebugLog(
+				'semanticschemas',
+				"SAVE EXCEPTION: " . $title->getPrefixedText() . " - " . $e->getMessage()
+					. "\nStack: " . $e->getTraceAsString()
+			);
 			return false;
 		}
 	}
@@ -210,7 +216,10 @@ class PageCreator {
 			$status = $deletePage->deleteUnsafe( $reason );
 
 			if ( !$status->isOK() ) {
-				wfLogWarning( "SemanticSchemas: Failed deleting '{$title->getPrefixedText()}': " . $status->getMessage( false ) );
+				wfLogWarning(
+					"SemanticSchemas: Failed deleting '{$title->getPrefixedText()}': "
+						. $status->getMessage( false )
+				);
 				return false;
 			}
 

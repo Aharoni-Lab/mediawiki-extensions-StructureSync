@@ -789,7 +789,7 @@ class SchemaValidator {
 	public function generateWarnings( array $schema ): array {
 		$warnings = [];
 
-		if ( !isset( $schema['categories'], $schema['properties'] ) ) {
+		if ( !isset( $schema['categories'] ) || !isset( $schema['properties'] ) ) {
 			return $warnings;
 		}
 

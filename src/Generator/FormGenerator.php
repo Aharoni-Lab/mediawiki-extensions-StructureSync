@@ -108,12 +108,13 @@ class FormGenerator {
 			$parentParam = NamingHelper::propertyToParameter( $parentProp );
 
 			$lines[] = '<!-- Auto-populated category membership field -->';
-			$lines[] =
-				'{{{standard input|free text|hidden|rows=1|placeholder=Parent categories will be added automatically|id=ss-parent-categories}}}';
+			$lines[] = '{{{standard input|free text|hidden|rows=1'
+				. '|placeholder=Parent categories will be added automatically|id=ss-parent-categories}}}';
 			$lines[] = '';
 
 			$lines[] = "'''Hierarchy Preview:'''";
-			$lines[] = '<div id="ss-form-hierarchy-preview" data-parent-field="' . $this->s( $parentParam ) . '"></div>';
+			$lines[] = '<div id="ss-form-hierarchy-preview" data-parent-field="'
+				. $this->s( $parentParam ) . '"></div>';
 			$lines[] = '';
 		}
 
