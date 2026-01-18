@@ -1,262 +1,499 @@
+/**
+ * SemanticSchemas — Modern Scholarly Interface
+ * =============================================
+ * A refined, editorial design system for wiki schema management.
+ * Clean geometric typography, muted slate palette, generous whitespace.
+ */
+
+/* ========================================================
+   Design Tokens (CSS Custom Properties)
+   ======================================================== */
+
 .semanticschemas-shell {
-	margin: 0 auto 48px;
-	padding: 0 16px 32px;
-	max-width: 1200px;
-	color: #202122;
-	font-size: 0.95rem;
+	/* Typography */
+	--ss-font-display: "Geist", "SF Pro Display", -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+	--ss-font-body: "Geist", "SF Pro Text", -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+	--ss-font-mono: "Geist Mono", "SF Mono", "Fira Code", "Consolas", monospace;
+
+	/* Colors — Slate foundation */
+	--ss-slate-950: #0c0f14;
+	--ss-slate-900: #151922;
+	--ss-slate-800: #1e242f;
+	--ss-slate-700: #2d3648;
+	--ss-slate-600: #475569;
+	--ss-slate-500: #64748b;
+	--ss-slate-400: #94a3b8;
+	--ss-slate-300: #cbd5e1;
+	--ss-slate-200: #e2e8f0;
+	--ss-slate-100: #f1f5f9;
+	--ss-slate-50: #f8fafc;
+
+	/* Accent — Deep teal */
+	--ss-accent-600: #0d7377;
+	--ss-accent-500: #0f9099;
+	--ss-accent-400: #22b8c9;
+	--ss-accent-100: #d5f5f6;
+	--ss-accent-50: #ecfeff;
+
+	/* Status colors */
+	--ss-success-600: #16a34a;
+	--ss-success-100: #dcfce7;
+	--ss-success-50: #f0fdf4;
+
+	--ss-warning-600: #ca8a04;
+	--ss-warning-100: #fef9c3;
+	--ss-warning-50: #fefce8;
+
+	--ss-error-600: #dc2626;
+	--ss-error-100: #fee2e2;
+	--ss-error-50: #fef2f2;
+
+	/* Spacing scale */
+	--ss-space-1: 4px;
+	--ss-space-2: 8px;
+	--ss-space-3: 12px;
+	--ss-space-4: 16px;
+	--ss-space-5: 20px;
+	--ss-space-6: 24px;
+	--ss-space-8: 32px;
+	--ss-space-10: 40px;
+	--ss-space-12: 48px;
+
+	/* Radius */
+	--ss-radius-sm: 6px;
+	--ss-radius-md: 10px;
+	--ss-radius-lg: 14px;
+	--ss-radius-xl: 20px;
+
+	/* Shadows — Layered depth */
+	--ss-shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.04);
+	--ss-shadow-md: 0 4px 12px rgba(15, 23, 42, 0.06), 0 1px 3px rgba(15, 23, 42, 0.04);
+	--ss-shadow-lg: 0 12px 32px rgba(15, 23, 42, 0.08), 0 4px 8px rgba(15, 23, 42, 0.04);
+	--ss-shadow-xl: 0 20px 48px rgba(15, 23, 42, 0.12), 0 8px 16px rgba(15, 23, 42, 0.06);
+
+	/* Transitions */
+	--ss-transition-fast: 120ms ease-out;
+	--ss-transition-base: 180ms ease-out;
+	--ss-transition-slow: 280ms ease-out;
 }
+
+/* ========================================================
+   Base Shell
+   ======================================================== */
+
+.semanticschemas-shell {
+	margin: 0 auto var(--ss-space-12);
+	padding: 0 var(--ss-space-5) var(--ss-space-8);
+	max-width: 1140px;
+	font-family: var(--ss-font-body);
+	font-size: 0.9375rem;
+	line-height: 1.6;
+	color: var(--ss-slate-800);
+	-webkit-font-smoothing: antialiased;
+	-moz-osx-font-smoothing: grayscale;
+}
+
+/* ========================================================
+   Navigation Tabs
+   ======================================================== */
 
 .semanticschemas-tabs {
 	display: flex;
 	flex-wrap: wrap;
-	gap: 8px;
-	margin: 16px auto 24px;
-	padding: 0;
-	list-style: none;
+	gap: var(--ss-space-2);
+	margin: var(--ss-space-5) auto var(--ss-space-6);
+	padding: var(--ss-space-1);
+	background: var(--ss-slate-100);
+	border-radius: var(--ss-radius-lg);
+	border: 1px solid var(--ss-slate-200);
 }
 
 .semanticschemas-tab {
 	display: flex;
 	flex-direction: column;
 	justify-content: center;
-	min-width: 140px;
-	padding: 12px 16px;
-	border: 1px solid #c8ccd1;
-	border-radius: 8px;
-	background: #f8f9fa;
-	color: #202122;
+	flex: 1;
+	min-width: 120px;
+	padding: var(--ss-space-3) var(--ss-space-4);
+	border-radius: var(--ss-radius-md);
+	background: transparent;
+	color: var(--ss-slate-600);
 	text-decoration: none;
-	font-weight: 600;
-	box-shadow: 0 1px 2px rgba(32, 33, 36, 0.05);
-	transition: box-shadow 0.15s ease, transform 0.15s ease, background 0.15s ease;
+	font-weight: 500;
+	transition: all var(--ss-transition-base);
+	border: 1px solid transparent;
 }
 
 .semanticschemas-tab:hover {
+	background: var(--ss-slate-50);
+	color: var(--ss-slate-800);
 	text-decoration: none;
-	box-shadow: 0 4px 10px rgba(32, 33, 36, 0.12);
-	transform: translateY(-1px);
+	border-color: var(--ss-slate-200);
 }
 
 .semanticschemas-tab.is-active {
-	background: linear-gradient(135deg, #3366cc, #082567);
-	color: #fff;
-	border-color: #082567;
-	box-shadow: 0 6px 16px rgba(8, 37, 103, 0.2);
+	background: #fff;
+	color: var(--ss-slate-900);
+	border-color: var(--ss-slate-200);
+	box-shadow: var(--ss-shadow-md);
+}
+
+.semanticschemas-tab.is-active .semanticschemas-tab-label {
+	color: var(--ss-accent-600);
 }
 
 .semanticschemas-tab-label {
-	font-size: 1rem;
-	margin-bottom: 2px;
+	font-size: 0.9375rem;
+	font-weight: 600;
+	letter-spacing: -0.01em;
+	margin-bottom: 1px;
+	transition: color var(--ss-transition-fast);
 }
 
 .semanticschemas-tab-subtext {
-	font-size: 0.8rem;
+	font-size: 0.75rem;
 	font-weight: 400;
-	opacity: 0.85;
+	color: var(--ss-slate-500);
+	opacity: 0.9;
 }
 
+/* ========================================================
+   Hero Section
+   ======================================================== */
+
 .semanticschemas-hero {
-	border-radius: 16px;
-	padding: 24px;
 	display: flex;
 	align-items: center;
 	justify-content: space-between;
-	gap: 24px;
-	background: linear-gradient(120deg, #e8f2ff, #fdf2e9);
-	border: 1px solid #c8ccd1;
-	box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.2);
+	gap: var(--ss-space-6);
+	padding: var(--ss-space-6) var(--ss-space-8);
+	margin-bottom: var(--ss-space-6);
+	border-radius: var(--ss-radius-xl);
+	background: linear-gradient(135deg, var(--ss-slate-50) 0%, #fff 50%, var(--ss-accent-50) 100%);
+	border: 1px solid var(--ss-slate-200);
+	position: relative;
+	overflow: hidden;
+}
+
+.semanticschemas-hero::before {
+	content: "";
+	position: absolute;
+	top: 0;
+	right: 0;
+	width: 40%;
+	height: 100%;
+	background: radial-gradient(ellipse at 100% 0%, var(--ss-accent-100) 0%, transparent 70%);
+	opacity: 0.5;
+	pointer-events: none;
 }
 
 .semanticschemas-hero h1 {
-	margin: 0 0 6px;
-	font-size: 1.45rem;
+	margin: 0 0 var(--ss-space-2);
+	font-family: var(--ss-font-display);
+	font-size: 1.5rem;
+	font-weight: 700;
+	letter-spacing: -0.025em;
+	color: var(--ss-slate-900);
 }
 
 .semanticschemas-hero p {
 	margin: 0;
-	color: #54595d;
+	color: var(--ss-slate-600);
+	font-size: 0.9375rem;
+	max-width: 480px;
 }
 
 .semanticschemas-hero-status {
 	display: flex;
 	flex-direction: column;
-	gap: 8px;
+	gap: var(--ss-space-2);
 	align-items: flex-end;
+	position: relative;
+	z-index: 1;
 }
 
 .semanticschemas-status-chip {
 	display: inline-flex;
 	align-items: center;
-	gap: 8px;
-	padding: 10px 16px;
+	gap: var(--ss-space-2);
+	padding: var(--ss-space-2) var(--ss-space-4);
 	border-radius: 999px;
+	font-size: 0.8125rem;
 	font-weight: 600;
+	letter-spacing: -0.01em;
+	border: 1px solid;
 }
 
 .semanticschemas-status-chip.is-clean {
-	background: rgba(33, 150, 83, 0.15);
-	color: #0b6b39;
+	background: var(--ss-success-50);
+	color: var(--ss-success-600);
+	border-color: var(--ss-success-100);
+}
+
+.semanticschemas-status-chip.is-clean::before {
+	content: "";
+	width: 8px;
+	height: 8px;
+	border-radius: 50%;
+	background: var(--ss-success-600);
+	animation: pulse-success 2s infinite;
 }
 
 .semanticschemas-status-chip.is-dirty {
-	background: rgba(221, 51, 51, 0.15);
-	color: #b32424;
+	background: var(--ss-warning-50);
+	color: var(--ss-warning-600);
+	border-color: var(--ss-warning-100);
 }
+
+.semanticschemas-status-chip.is-dirty::before {
+	content: "";
+	width: 8px;
+	height: 8px;
+	border-radius: 50%;
+	background: var(--ss-warning-600);
+	animation: pulse-warning 1.5s infinite;
+}
+
+@keyframes pulse-success {
+	0%, 100% { opacity: 1; transform: scale(1); }
+	50% { opacity: 0.6; transform: scale(0.9); }
+}
+
+@keyframes pulse-warning {
+	0%, 100% { opacity: 1; }
+	50% { opacity: 0.5; }
+}
+
+/* ========================================================
+   Summary Statistics Grid
+   ======================================================== */
 
 .semanticschemas-summary-grid {
 	display: grid;
-	grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-	gap: 16px;
+	grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+	gap: var(--ss-space-4);
+	margin-bottom: var(--ss-space-6);
 }
 
 .semanticschemas-stat-card {
-	border: 1px solid #c8ccd1;
-	border-radius: 12px;
+	padding: var(--ss-space-4) var(--ss-space-5);
 	background: #fff;
-	padding: 16px;
-	box-shadow: 0 4px 14px rgba(32, 33, 36, 0.08);
+	border: 1px solid var(--ss-slate-200);
+	border-radius: var(--ss-radius-lg);
+	box-shadow: var(--ss-shadow-sm);
+	transition: all var(--ss-transition-base);
+}
+
+.semanticschemas-stat-card:hover {
+	box-shadow: var(--ss-shadow-md);
+	border-color: var(--ss-slate-300);
 }
 
 .semanticschemas-stat-label {
-	font-size: 0.8rem;
+	font-size: 0.6875rem;
+	font-weight: 600;
 	text-transform: uppercase;
-	letter-spacing: 0.08em;
-	color: #6b6b6b;
+	letter-spacing: 0.06em;
+	color: var(--ss-slate-500);
+	margin-bottom: var(--ss-space-1);
 }
 
 .semanticschemas-stat-value {
-	font-size: 1.8rem;
+	font-family: var(--ss-font-display);
+	font-size: 1.75rem;
 	font-weight: 700;
-	margin: 4px 0 6px;
-	color: #202122;
+	letter-spacing: -0.03em;
+	color: var(--ss-slate-900);
+	line-height: 1.1;
+	margin-bottom: var(--ss-space-1);
 }
 
 .semanticschemas-stat-subtext {
-	font-size: 0.85rem;
-	color: #54595d;
+	font-size: 0.8125rem;
+	color: var(--ss-slate-500);
 	margin: 0;
 }
 
+/* ========================================================
+   Cards
+   ======================================================== */
+
 .semanticschemas-card {
-	border: 1px solid #c8ccd1;
-	border-radius: 16px;
 	background: #fff;
-	padding: 20px 24px;
-	box-shadow: 0 4px 18px rgba(32, 33, 36, 0.08);
+	border: 1px solid var(--ss-slate-200);
+	border-radius: var(--ss-radius-lg);
+	padding: var(--ss-space-5) var(--ss-space-6);
+	box-shadow: var(--ss-shadow-sm);
 }
 
-.semanticschemas-card+.semanticschemas-card {
-	margin-top: 16px;
+.semanticschemas-card + .semanticschemas-card {
+	margin-top: var(--ss-space-5);
 }
 
 .semanticschemas-card-header {
 	display: flex;
-	justify-content: space-between;
-	align-items: flex-start;
-	gap: 16px;
-	margin-bottom: 12px;
+	flex-direction: column;
+	gap: var(--ss-space-1);
+	margin-bottom: var(--ss-space-4);
+	padding-bottom: var(--ss-space-4);
+	border-bottom: 1px solid var(--ss-slate-100);
 }
 
 .semanticschemas-card-title {
 	margin: 0;
-	font-size: 1.2rem;
+	font-family: var(--ss-font-display);
+	font-size: 1.125rem;
+	font-weight: 650;
+	letter-spacing: -0.02em;
+	color: var(--ss-slate-900);
 }
 
 .semanticschemas-card-subtitle {
 	margin: 0;
-	color: #54595d;
-	font-size: 0.9rem;
+	font-size: 0.875rem;
+	color: var(--ss-slate-500);
 }
+
+/* ========================================================
+   Quick Actions
+   ======================================================== */
 
 .semanticschemas-quick-actions {
 	display: grid;
-	grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-	gap: 12px;
-	margin-top: 12px;
+	grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+	gap: var(--ss-space-3);
 }
 
 .semanticschemas-quick-action {
 	display: flex;
 	flex-direction: column;
-	gap: 4px;
-	padding: 14px;
-	border-radius: 12px;
-	border: 1px solid #e2e3e5;
-	background: #f8f9fa;
+	gap: var(--ss-space-1);
+	padding: var(--ss-space-4);
+	border-radius: var(--ss-radius-md);
+	border: 1px solid var(--ss-slate-200);
+	background: var(--ss-slate-50);
 	text-decoration: none;
-	color: #202122;
-	font-weight: 600;
-	transition: background 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
+	color: var(--ss-slate-800);
+	transition: all var(--ss-transition-base);
+	position: relative;
+	overflow: hidden;
+}
+
+.semanticschemas-quick-action::before {
+	content: "";
+	position: absolute;
+	left: 0;
+	top: 0;
+	bottom: 0;
+	width: 3px;
+	background: var(--ss-accent-500);
+	transform: scaleY(0);
+	transition: transform var(--ss-transition-base);
 }
 
 .semanticschemas-quick-action:hover {
-	text-decoration: none;
 	background: #fff;
-	box-shadow: 0 10px 20px rgba(32, 33, 36, 0.12);
+	border-color: var(--ss-accent-400);
+	box-shadow: var(--ss-shadow-md);
+	text-decoration: none;
 	transform: translateY(-2px);
 }
 
-.semanticschemas-quick-action span {
-	font-weight: 400;
-	color: #6b6b6b;
-	font-size: 0.85rem;
+.semanticschemas-quick-action:hover::before {
+	transform: scaleY(1);
 }
+
+.semanticschemas-quick-action strong {
+	font-weight: 600;
+	font-size: 0.9375rem;
+	color: var(--ss-slate-900);
+}
+
+.semanticschemas-quick-action span {
+	font-size: 0.8125rem;
+	color: var(--ss-slate-500);
+}
+
+/* ========================================================
+   Tables
+   ======================================================== */
 
 .semanticschemas-table-wrapper {
 	overflow-x: auto;
+	margin: 0 calc(var(--ss-space-6) * -1);
+	padding: 0 var(--ss-space-6);
 }
 
 .semanticschemas-table {
 	width: 100%;
-	border-collapse: separate;
-	border-spacing: 0;
+	border-collapse: collapse;
 }
 
 .semanticschemas-table thead th {
-	background: #f2f5fb;
+	padding: var(--ss-space-3) var(--ss-space-4);
+	background: var(--ss-slate-50);
+	font-size: 0.6875rem;
 	font-weight: 600;
 	text-transform: uppercase;
-	font-size: 0.8rem;
 	letter-spacing: 0.05em;
+	color: var(--ss-slate-600);
+	text-align: left;
+	border-bottom: 2px solid var(--ss-slate-200);
 }
 
-.semanticschemas-table th,
-.semanticschemas-table td {
-	padding: 10px 14px;
-	border-bottom: 1px solid #eaecf0;
+.semanticschemas-table tbody td {
+	padding: var(--ss-space-3) var(--ss-space-4);
+	border-bottom: 1px solid var(--ss-slate-100);
+	font-size: 0.875rem;
+	color: var(--ss-slate-700);
+	vertical-align: middle;
+}
+
+.semanticschemas-table tbody tr {
+	transition: background-color var(--ss-transition-fast);
 }
 
 .semanticschemas-table tbody tr:hover {
-	background: #f8fbff;
+	background: var(--ss-slate-50);
 }
+
+.semanticschemas-table tbody tr:last-child td {
+	border-bottom: none;
+}
+
+/* ========================================================
+   Badges
+   ======================================================== */
 
 .semanticschemas-badge {
 	display: inline-flex;
 	align-items: center;
-	gap: 6px;
-	padding: 3px 9px;
+	gap: var(--ss-space-1);
+	padding: 3px 10px;
 	border-radius: 999px;
-	font-size: 0.8rem;
+	font-size: 0.6875rem;
 	font-weight: 600;
-	border: 1px solid transparent;
+	text-transform: uppercase;
+	letter-spacing: 0.03em;
+	border: 1px solid;
 }
 
 .semanticschemas-badge.is-ok {
-	background: rgba(33, 150, 83, 0.1);
-	color: #0b6b39;
-	border-color: rgba(33, 150, 83, 0.2);
+	background: var(--ss-success-50);
+	color: var(--ss-success-600);
+	border-color: var(--ss-success-100);
 }
 
 .semanticschemas-badge.is-alert {
-	background: rgba(221, 51, 51, 0.08);
-	color: #b32424;
-	border-color: rgba(221, 51, 51, 0.4);
+	background: var(--ss-warning-50);
+	color: var(--ss-warning-600);
+	border-color: var(--ss-warning-100);
 }
 
 .semanticschemas-badge.is-muted {
-	background: rgba(99, 112, 133, 0.08);
-	color: #5a6775;
-	border-color: rgba(99, 112, 133, 0.2);
+	background: var(--ss-slate-100);
+	color: var(--ss-slate-600);
+	border-color: var(--ss-slate-200);
 }
 
 .semanticschemas-inline-link {
@@ -264,14 +501,194 @@
 }
 
 .semanticschemas-inline-link:hover .semanticschemas-badge {
-	box-shadow: 0 0 0 2px rgba(51, 102, 204, 0.2);
+	box-shadow: 0 0 0 3px var(--ss-accent-100);
 }
+
+/* ========================================================
+   Forms
+   ======================================================== */
 
 .semanticschemas-form-grid {
 	display: grid;
-	grid-template-columns: 1.1fr 0.9fr;
-	gap: 24px;
+	grid-template-columns: 1fr 0.8fr;
+	gap: var(--ss-space-6);
 }
+
+.semanticschemas-form-group {
+	display: flex;
+	flex-direction: column;
+	gap: var(--ss-space-2);
+	margin-bottom: var(--ss-space-4);
+}
+
+.semanticschemas-form-group label {
+	font-size: 0.8125rem;
+	font-weight: 600;
+	color: var(--ss-slate-700);
+}
+
+.semanticschemas-form-group select,
+.semanticschemas-form-group input[type="text"],
+.semanticschemas-form-group textarea {
+	padding: var(--ss-space-2) var(--ss-space-3);
+	border: 1px solid var(--ss-slate-300);
+	border-radius: var(--ss-radius-sm);
+	font-family: var(--ss-font-body);
+	font-size: 0.9375rem;
+	color: var(--ss-slate-800);
+	background: #fff;
+	transition: all var(--ss-transition-fast);
+}
+
+.semanticschemas-form-group select:focus,
+.semanticschemas-form-group input[type="text"]:focus,
+.semanticschemas-form-group textarea:focus {
+	outline: none;
+	border-color: var(--ss-accent-500);
+	box-shadow: 0 0 0 3px var(--ss-accent-100);
+}
+
+.semanticschemas-form-help {
+	font-size: 0.8125rem;
+	color: var(--ss-slate-500);
+	margin-top: var(--ss-space-1);
+}
+
+.semanticschemas-help-card {
+	padding: var(--ss-space-4);
+	background: var(--ss-slate-50);
+	border: 1px dashed var(--ss-slate-300);
+	border-radius: var(--ss-radius-md);
+}
+
+.semanticschemas-help-card strong {
+	display: block;
+	font-size: 0.875rem;
+	color: var(--ss-slate-700);
+	margin-bottom: var(--ss-space-2);
+}
+
+.semanticschemas-help-card ul {
+	margin: 0;
+	padding-left: var(--ss-space-5);
+}
+
+.semanticschemas-help-card li {
+	font-size: 0.8125rem;
+	color: var(--ss-slate-600);
+	margin: var(--ss-space-1) 0;
+}
+
+/* ========================================================
+   Progress Indicator
+   ======================================================== */
+
+.semanticschemas-progress {
+	margin: var(--ss-space-4) 0 var(--ss-space-6);
+	padding: var(--ss-space-4);
+	border-radius: var(--ss-radius-md);
+	background: var(--ss-accent-50);
+	border: 1px solid var(--ss-accent-100);
+}
+
+.semanticschemas-progress > p {
+	margin: 0 0 var(--ss-space-3);
+	font-weight: 600;
+	color: var(--ss-accent-600);
+}
+
+.semanticschemas-progress-log {
+	max-height: 240px;
+	overflow-y: auto;
+	padding-right: var(--ss-space-2);
+}
+
+.semanticschemas-progress-item {
+	padding: var(--ss-space-2) 0;
+	font-size: 0.875rem;
+	color: var(--ss-slate-700);
+	border-bottom: 1px solid var(--ss-accent-100);
+}
+
+.semanticschemas-progress-item:last-child {
+	border-bottom: none;
+}
+
+.semanticschemas-progress-item.semanticschemas-error {
+	color: var(--ss-error-600);
+	background: var(--ss-error-50);
+	padding: var(--ss-space-2) var(--ss-space-3);
+	margin: var(--ss-space-1) 0;
+	border-radius: var(--ss-radius-sm);
+	border: 1px solid var(--ss-error-100);
+}
+
+/* ========================================================
+   Schema Display (Code blocks)
+   ======================================================== */
+
+.semanticschemas-schema-display {
+	border-radius: var(--ss-radius-lg);
+	overflow: hidden;
+	background: var(--ss-slate-900);
+	border: 1px solid var(--ss-slate-800);
+	box-shadow: var(--ss-shadow-lg);
+}
+
+.semanticschemas-schema-content {
+	margin: 0;
+	padding: var(--ss-space-4) var(--ss-space-5);
+	font-family: var(--ss-font-mono);
+	font-size: 0.8125rem;
+	line-height: 1.5;
+	color: var(--ss-slate-200);
+	background: transparent;
+	max-height: 420px;
+	overflow: auto;
+}
+
+/* ========================================================
+   Export Actions
+   ======================================================== */
+
+.semanticschemas-export-actions {
+	display: flex;
+	flex-wrap: wrap;
+	gap: var(--ss-space-2);
+	margin-top: var(--ss-space-3);
+}
+
+/* ========================================================
+   Callout
+   ======================================================== */
+
+.semanticschemas-callout {
+	padding: var(--ss-space-3) var(--ss-space-4);
+	background: var(--ss-accent-50);
+	border-left: 3px solid var(--ss-accent-500);
+	border-radius: 0 var(--ss-radius-sm) var(--ss-radius-sm) 0;
+	color: var(--ss-slate-700);
+	margin: var(--ss-space-3) 0;
+	font-size: 0.875rem;
+}
+
+/* ========================================================
+   Empty State
+   ======================================================== */
+
+.semanticschemas-empty-state {
+	text-align: center;
+	padding: var(--ss-space-10) var(--ss-space-6);
+	border-radius: var(--ss-radius-lg);
+	background: var(--ss-slate-50);
+	border: 2px dashed var(--ss-slate-200);
+	color: var(--ss-slate-500);
+	font-size: 0.9375rem;
+}
+
+/* ========================================================
+   Responsive Adjustments
+   ======================================================== */
 
 @media screen and (max-width: 900px) {
 	.semanticschemas-form-grid {
@@ -281,6 +698,11 @@
 	.semanticschemas-hero {
 		flex-direction: column;
 		align-items: flex-start;
+		padding: var(--ss-space-5);
+	}
+
+	.semanticschemas-hero::before {
+		display: none;
 	}
 
 	.semanticschemas-hero-status {
@@ -289,95 +711,59 @@
 	}
 }
 
-.semanticschemas-form-group {
-	display: flex;
-	flex-direction: column;
-	gap: 6px;
-	margin-bottom: 16px;
+@media screen and (max-width: 640px) {
+	.semanticschemas-shell {
+		padding: 0 var(--ss-space-3) var(--ss-space-6);
+	}
+
+	.semanticschemas-tabs {
+		flex-direction: column;
+		gap: var(--ss-space-1);
+	}
+
+	.semanticschemas-tab {
+		flex-direction: row;
+		align-items: center;
+		gap: var(--ss-space-2);
+	}
+
+	.semanticschemas-tab-subtext {
+		display: none;
+	}
+
+	.semanticschemas-summary-grid {
+		grid-template-columns: repeat(2, 1fr);
+	}
+
+	.semanticschemas-card {
+		padding: var(--ss-space-4);
+	}
 }
 
-.semanticschemas-form-group label {
+/* ========================================================
+   MediaWiki Button Overrides (within shell)
+   ======================================================== */
+
+.semanticschemas-shell .mw-ui-button {
+	font-family: var(--ss-font-body);
+	font-size: 0.875rem;
 	font-weight: 600;
+	padding: var(--ss-space-2) var(--ss-space-4);
+	border-radius: var(--ss-radius-sm);
+	transition: all var(--ss-transition-fast);
 }
 
-.semanticschemas-help-card {
-	border: 1px dashed #a2a9b1;
-	background: #f8f9fa;
-	border-radius: 12px;
-	padding: 16px;
-	display: flex;
-	flex-direction: column;
-	gap: 10px;
+.semanticschemas-shell .mw-ui-button.mw-ui-progressive {
+	background: var(--ss-accent-600);
+	border-color: var(--ss-accent-600);
 }
 
-.semanticschemas-schema-display {
-	background: #0b1120;
-	border-radius: 12px;
-	padding: 0;
-	overflow: hidden;
-	border: 1px solid #0b1120;
-	box-shadow: 0 12px 24px rgba(0, 0, 0, 0.35);
+.semanticschemas-shell .mw-ui-button.mw-ui-progressive:hover {
+	background: var(--ss-accent-500);
+	border-color: var(--ss-accent-500);
+	box-shadow: var(--ss-shadow-md);
 }
 
-.semanticschemas-schema-content {
-	margin: 0;
-	padding: 18px;
-	color: #f8f8f2;
-	background: transparent;
-	max-height: 500px;
-	overflow: auto;
-	font-size: 0.9rem;
-	line-height: 1.45;
-}
-
-.semanticschemas-export-actions {
-	display: flex;
-	flex-wrap: wrap;
-	gap: 8px;
-	margin-top: 12px;
-}
-
-.semanticschemas-progress {
-	margin: 16px 0;
-	padding: 16px;
-	border-radius: 12px;
-	background: #eaf3ff;
-	border: 1px solid #a7d7f9;
-	display: flex;
-	flex-direction: column;
-	gap: 12px;
-	margin-bottom: 24px;
-}
-
-.semanticschemas-progress-log {
-	max-height: 260px;
-	overflow-y: auto;
-	display: flex;
-	flex-direction: column;
-	gap: 8px;
-	padding-right: 6px;
-}
-
-.semanticschemas-progress-item {
-	padding: 8px 0;
-	font-style: italic;
-	color: #202122;
-}
-
-.semanticschemas-callout {
-	border-left: 4px solid #3366cc;
-	padding: 12px 16px;
-	background: #f8fbff;
-	border-radius: 8px;
-	color: #202122;
-	margin: 12px 0;
-}
-
-.semanticschemas-empty-state {
-	text-align: center;
-	padding: 32px;
-	border-radius: 12px;
-	background: #f8f9fa;
-	border: 1px dashed #c8ccd1;
-	color: #54595d;
+.semanticschemas-shell .mw-ui-button.mw-ui-progressive:focus {
+	box-shadow: 0 0 0 3px var(--ss-accent-100);
 }

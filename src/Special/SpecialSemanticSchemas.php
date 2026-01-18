@@ -5,11 +5,9 @@ namespace MediaWiki\Extension\SemanticSchemas\Special;
 use MediaWiki\Extension\SemanticSchemas\Generator\DisplayStubGenerator;
 use MediaWiki\Extension\SemanticSchemas\Generator\FormGenerator;
 use MediaWiki\Extension\SemanticSchemas\Generator\TemplateGenerator;
+use MediaWiki\Extension\SemanticSchemas\Schema\CategoryModel;
 use MediaWiki\Extension\SemanticSchemas\Schema\InheritanceResolver;
 use MediaWiki\Extension\SemanticSchemas\Schema\OntologyInspector;
-use MediaWiki\Extension\SemanticSchemas\Schema\SchemaComparer;
-use MediaWiki\Extension\SemanticSchemas\Schema\SchemaLoader;
-use MediaWiki\Extension\SemanticSchemas\Store\PageCreator;
 use MediaWiki\Extension\SemanticSchemas\Store\PageHashComputer;
 use MediaWiki\Extension\SemanticSchemas\Store\StateManager;
 use MediaWiki\Extension\SemanticSchemas\Store\WikiCategoryStore;
@@ -21,58 +19,28 @@ use MediaWiki\Title\Title;
 
 /**
  * SpecialSemanticSchemas
- * --------------------
+ * ----------------------
  * Central administrative UI for SemanticSchemas schema management.
  *
- * File Size Note:
- * --------------
- * This file is intentionally large (1001 lines) as it serves as the main
- * UI controller for all schema operations. It follows MediaWiki's SpecialPage
- * pattern where a single class handles:
- * - Request routing
- * - Form rendering
- * - Action processing
- * - UI generation
- *
- * Future Refactoring:
- * ------------------
- * For maintainability, consider extracting to separate classes:
- * - UI/SpecialPageRenderer: HTML generation
- * - UI/TableBuilder: Category/property table rendering
- * - UI/FormHandler: Form processing logic
- * However, the current structure follows standard MediaWiki conventions.
- *
- * Central UI for:
- * --------------
+ * Provides four main views:
  * - Overview: Dashboard with category status and sync state
  * - Validate: Check wiki state for errors and modifications
  * - Generate: Regenerate templates/forms/displays
  * - Hierarchy: Visualize category inheritance and subobjects
  *
  * Architecture:
- * ------------
  * - Schema is treated as the source of truth
  * - Wiki pages (Category/Property/Form/Template) are compiled artifacts
  * - State tracking prevents unnecessary regeneration
  * - Hash-based dirty detection identifies external modifications
  *
  * Security:
- * --------
  * - Requires 'editinterface' permission
  * - CSRF token validation on all form submissions (matchEditToken)
  * - Input sanitization via MediaWiki's request handling
- * - File upload validation (JSON/YAML only)
  * - Rate limiting: max 20 operations per hour per user
  * - Sysops can bypass rate limits via 'protect' permission
  * - All operations logged to MediaWiki log system (audit trail)
- *
- * Performance:
- * -----------
- * - Large operations (import/generate) are synchronous
- * - Progress indicators show operation status
- * - Per-category progress feedback for bulk operations
- * - State caching reduces repeated inheritance resolution
- * - Rate limiting prevents server overload
  */
 class SpecialSemanticSchemas extends SpecialPage {
 
@@ -263,6 +231,59 @@ class SpecialSemanticSchemas extends SpecialPage {
 	}
 
 	/**
+	 * Render a standard card header with title and optional subtitle.
+	 *
+	 * @param string $title
+	 * @param string $subtitle
+	 * @return string
+	 */
+	private function renderCardHeader( string $title, string $subtitle = '' ): string {
+		$content = Html::element( 'h3', [ 'class' => 'semanticschemas-card-title' ], $title );
+
+		if ( $subtitle !== '' ) {
+			$content .= Html::element( 'p', [ 'class' => 'semanticschemas-card-subtitle' ], $subtitle );
+		}
+
+		return Html::rawElement( 'div', [ 'class' => 'semanticschemas-card-header' ], $content );
+	}
+
+	/**
+	 * Render a card container with header and body content.
+	 *
+	 * @param string $title
+	 * @param string $subtitle
+	 * @param string $bodyHtml
+	 * @return string
+	 */
+	private function renderCard( string $title, string $subtitle, string $bodyHtml ): string {
+		return Html::rawElement(
+			'div',
+			[ 'class' => 'semanticschemas-card' ],
+			$this->renderCardHeader( $title, $subtitle ) . $bodyHtml
+		);
+	}
+
+	/**
+	 * Render a simple HTML list from an array of items.
+	 *
+	 * @param array $items
+	 * @return string
+	 */
+	private function renderList( array $items ): string {
+		if ( empty( $items ) ) {
+			return '';
+		}
+
+		$html = Html::openElement( 'ul' );
+		foreach ( $items as $item ) {
+			$html .= Html::element( 'li', [], $item );
+		}
+		$html .= Html::closeElement( 'ul' );
+
+		return $html;
+	}
+
+	/**
 	 * Render a compact stat card tile.
 	 *
 	 * @param string $label
@@ -429,71 +450,65 @@ class SpecialSemanticSchemas extends SpecialPage {
 	}
 
 	/**
-	 * Overview page: summarises current schema + category/template/form status.
+	 * Render the hero section for the overview page.
+	 *
+	 * @param bool $isDirty Whether the schema is out of sync
+	 * @return string HTML
 	 */
-	private function showOverview(): void {
-		$output = $this->getOutput();
-		$output->setPageTitle( $this->msg( 'semanticschemas-overview' )->text() );
-
-		$inspector = new OntologyInspector();
-		$stats = $inspector->getStatistics();
-		$stateManager = new StateManager();
-		$state = $stateManager->getFullState();
-
-		// Check sync status
-		$isDirty = $stateManager->isDirty();
-		$lastChange = $state['lastChangeTimestamp'] ?? null;
-		$lastGenerated = $state['generated'] ?? null;
-		$sourceSchemaHash = $state['sourceSchemaHash'] ?? null;
-
+	private function renderOverviewHero( bool $isDirty ): string {
 		$statusMessage = $isDirty
 			? $this->msg( 'semanticschemas-status-out-of-sync' )->text()
 			: $this->msg( 'semanticschemas-status-in-sync' )->text();
 
-		$hero = Html::rawElement(
-			'div',
-			[ 'class' => 'semanticschemas-hero' ],
-			Html::rawElement(
-				'div',
-				[],
-				Html::element(
-					'h1',
-					[],
-					$this->msg( 'semanticschemas' )->text() . ' — ' . $this->msg( 'semanticschemas-overview' )->text()
-				) .
-				Html::element(
-					'p',
-					[],
-					$this->msg( 'semanticschemas-overview-hero-description' )->text()
-				)
-			) .
-			Html::rawElement(
-				'div',
-				[ 'class' => 'semanticschemas-hero-status' ],
-				Html::rawElement(
-					'span',
-					[ 'class' => 'semanticschemas-status-chip ' . ( $isDirty ? 'is-dirty' : 'is-clean' ) ],
-					$statusMessage
-				) .
-				( $isDirty
-					? Html::element(
-						'a',
-						[
-							'href' => $this->getPageTitle( 'generate' )->getLocalURL(),
-							'class' => 'mw-ui-button mw-ui-progressive'
-						],
-						$this->msg( 'semanticschemas-status-generate-link' )->text()
-					)
-					: '' )
+		$generateLink = $isDirty
+			? Html::element(
+				'a',
+				[
+					'href' => $this->getPageTitle( 'generate' )->getLocalURL(),
+					'class' => 'mw-ui-button mw-ui-progressive'
+				],
+				$this->msg( 'semanticschemas-status-generate-link' )->text()
 			)
+			: '';
+
+		$heroContent = Html::rawElement(
+			'div',
+			[],
+			Html::element(
+				'h1',
+				[],
+				$this->msg( 'semanticschemas' )->text() . ' — ' . $this->msg( 'semanticschemas-overview' )->text()
+			) .
+			Html::element( 'p', [], $this->msg( 'semanticschemas-overview-hero-description' )->text() )
 		);
 
+		$heroStatus = Html::rawElement(
+			'div',
+			[ 'class' => 'semanticschemas-hero-status' ],
+			Html::rawElement(
+				'span',
+				[ 'class' => 'semanticschemas-status-chip ' . ( $isDirty ? 'is-dirty' : 'is-clean' ) ],
+				$statusMessage
+			) . $generateLink
+		);
+
+		return Html::rawElement( 'div', [ 'class' => 'semanticschemas-hero' ], $heroContent . $heroStatus );
+	}
+
+	/**
+	 * Render the summary statistics grid for the overview page.
+	 *
+	 * @param array $stats Statistics from OntologyInspector
+	 * @param array $state Full state from StateManager
+	 * @return string HTML
+	 */
+	private function renderSummaryGrid( array $stats, array $state ): string {
 		$categoryCount = (int)( $stats['categoryCount'] ?? 0 );
 		$propertyCount = (int)( $stats['propertyCount'] ?? 0 );
 		$subobjectCount = (int)( $stats['subobjectCount'] ?? 0 );
 		$lang = $this->getLanguage();
 
-		$summaryGrid = Html::rawElement(
+		return Html::rawElement(
 			'div',
 			[ 'class' => 'semanticschemas-summary-grid' ],
 			$this->renderStatCard(
@@ -513,21 +528,28 @@ class SpecialSemanticSchemas extends SpecialPage {
 			) .
 			$this->renderStatCard(
 				$this->msg( 'semanticschemas-label-last-change' )->text(),
-				$this->formatTimestamp( $lastChange )
+				$this->formatTimestamp( $state['lastChangeTimestamp'] ?? null )
 			) .
 			$this->renderStatCard(
 				$this->msg( 'semanticschemas-label-last-generation' )->text(),
-				$this->formatTimestamp( $lastGenerated )
+				$this->formatTimestamp( $state['generated'] ?? null )
 			) .
 			$this->renderStatCard(
 				$this->msg( 'semanticschemas-label-schema-hash' )->text(),
-				$this->formatSchemaHash( $sourceSchemaHash )
+				$this->formatSchemaHash( $state['sourceSchemaHash'] ?? null )
 			)
 		);
+	}
 
-		$quickActions = '';
+	/**
+	 * Render the quick actions section for the overview page.
+	 *
+	 * @return string HTML
+	 */
+	private function renderQuickActionsHtml(): string {
+		$actionsHtml = '';
 		foreach ( $this->getQuickActions() as $action ) {
-			$quickActions .= Html::rawElement(
+			$actionsHtml .= Html::rawElement(
 				'a',
 				[
 					'href' => $this->getPageTitle( $action['action'] )->getLocalURL(),
@@ -538,49 +560,126 @@ class SpecialSemanticSchemas extends SpecialPage {
 			);
 		}
 
-		$quickActionsCard = Html::rawElement(
-			'div',
-			[ 'class' => 'semanticschemas-card' ],
-			Html::rawElement(
-				'div',
-				[ 'class' => 'semanticschemas-card-header' ],
-				Html::element(
-					'h3',
-					[ 'class' => 'semanticschemas-card-title' ],
-					$this->msg( 'semanticschemas-overview-quick-actions' )->text()
-				) .
-				Html::element(
-					'p',
-					[ 'class' => 'semanticschemas-card-subtitle' ],
-					$this->msg( 'semanticschemas-overview-quick-actions-subtitle' )->text()
-				)
-			) .
-			Html::rawElement( 'div', [ 'class' => 'semanticschemas-quick-actions' ], $quickActions )
+		return Html::rawElement( 'div', [ 'class' => 'semanticschemas-quick-actions' ], $actionsHtml );
+	}
+
+	/**
+	 * Overview page: summarises current schema + category/template/form status.
+	 */
+	private function showOverview(): void {
+		$output = $this->getOutput();
+		$output->setPageTitle( $this->msg( 'semanticschemas-overview' )->text() );
+
+		$inspector = new OntologyInspector();
+		$stats = $inspector->getStatistics();
+		$stateManager = new StateManager();
+		$state = $stateManager->getFullState();
+		$isDirty = $stateManager->isDirty();
+
+		$hero = $this->renderOverviewHero( $isDirty );
+		$summaryGrid = $this->renderSummaryGrid( $stats, $state );
+
+		$quickActionsCard = $this->renderCard(
+			$this->msg( 'semanticschemas-overview-quick-actions' )->text(),
+			$this->msg( 'semanticschemas-overview-quick-actions-subtitle' )->text(),
+			$this->renderQuickActionsHtml()
 		);
 
-		$categoryCard = Html::rawElement(
-			'div',
-			[ 'class' => 'semanticschemas-card' ],
-			Html::rawElement(
-				'div',
-				[ 'class' => 'semanticschemas-card-header' ],
-				Html::element(
-					'h3',
-					[ 'class' => 'semanticschemas-card-title' ],
-					$this->msg( 'semanticschemas-overview-summary' )->text()
-				) .
-				Html::element(
-					'p',
-					[ 'class' => 'semanticschemas-card-subtitle' ],
-					$this->msg( 'semanticschemas-overview-categories-subtitle' )->text()
-				)
-			) .
+		$categoryCard = $this->renderCard(
+			$this->msg( 'semanticschemas-overview-summary' )->text(),
+			$this->msg( 'semanticschemas-overview-categories-subtitle' )->text(),
 			Html::rawElement( 'div', [ 'class' => 'semanticschemas-table-wrapper' ], $this->getCategoryStatusTable() )
 		);
 
-		$content = $hero . $summaryGrid . $quickActionsCard . $categoryCard;
+		$output->addHTML( $this->wrapShell( $hero . $summaryGrid . $quickActionsCard . $categoryCard ) );
+	}
 
-		$output->addHTML( $this->wrapShell( $content ) );
+	/**
+	 * Detect pages that have been modified outside the schema system.
+	 *
+	 * Compares current model hashes against stored hashes to identify
+	 * categories and properties that have been externally edited.
+	 *
+	 * @param array $categories Array of CategoryModel objects
+	 * @return array<string, bool> Map of page names to modification status
+	 */
+	private function detectModifiedPages( array $categories ): array {
+		$propertyStore = new WikiPropertyStore();
+		$stateManager = new StateManager();
+		$hashComputer = new PageHashComputer();
+
+		$storedHashes = $stateManager->getPageHashes();
+		$modifiedPages = [];
+
+		foreach ( $categories as $category ) {
+			$categoryName = $category->getName();
+			$pageName = "Category:$categoryName";
+
+			$currentHash = $hashComputer->computeCategoryModelHash( $category );
+			$storedHash = $storedHashes[$pageName]['generated'] ?? '';
+			if ( $storedHash !== '' && $currentHash !== $storedHash ) {
+				$modifiedPages[$pageName] = true;
+			}
+
+			foreach ( $category->getAllProperties() as $propertyName ) {
+				$propPageName = "Property:$propertyName";
+				if ( isset( $modifiedPages[$propPageName] ) ) {
+					continue;
+				}
+
+				$propModel = $propertyStore->readProperty( $propertyName );
+				if ( $propModel === null ) {
+					continue;
+				}
+
+				$currentHash = $hashComputer->computePropertyModelHash( $propModel );
+				$storedHash = $storedHashes[$propPageName]['generated'] ?? '';
+				if ( $storedHash !== '' && $currentHash !== $storedHash ) {
+					$modifiedPages[$propPageName] = true;
+				}
+			}
+		}
+
+		return $modifiedPages;
+	}
+
+	/**
+	 * Check if a category or any of its properties have been modified externally.
+	 *
+	 * @param CategoryModel $category Category model object
+	 * @param array<string, bool> $modifiedPages Map of modified page names
+	 * @return bool
+	 */
+	private function isCategoryModified( CategoryModel $category, array $modifiedPages ): bool {
+		$name = $category->getName();
+
+		if ( isset( $modifiedPages["Category:$name"] ) ) {
+			return true;
+		}
+
+		foreach ( $category->getAllProperties() as $propName ) {
+			if ( isset( $modifiedPages["Property:$propName"] ) ) {
+				return true;
+			}
+		}
+
+		return false;
+	}
+
+	/**
+	 * Render an availability badge cell for the category table.
+	 *
+	 * @param bool $exists Whether the artifact exists
+	 * @param Title|null $title Link target
+	 * @return string HTML table cell content
+	 */
+	private function renderAvailabilityBadge( bool $exists, ?Title $title ): string {
+		return $this->renderBadgeLink(
+			$exists,
+			$this->msg( 'semanticschemas-badge-available' )->text(),
+			$this->msg( 'semanticschemas-badge-missing' )->text(),
+			$title
+		);
 	}
 
 	/**
@@ -590,13 +689,9 @@ class SpecialSemanticSchemas extends SpecialPage {
 	 */
 	private function getCategoryStatusTable(): string {
 		$categoryStore = new WikiCategoryStore();
-		$propertyStore = new WikiPropertyStore();
 		$templateGenerator = new TemplateGenerator();
 		$formGenerator = new FormGenerator();
 		$displayGenerator = new DisplayStubGenerator();
-		$stateManager = new StateManager();
-		$hashComputer = new PageHashComputer();
-		$pageCreator = new PageCreator();
 
 		$categories = $categoryStore->getAllCategories();
 
@@ -608,44 +703,9 @@ class SpecialSemanticSchemas extends SpecialPage {
 			);
 		}
 
-		// Get stored hashes for comparison
-		$storedHashes = $stateManager->getPageHashes();
-		$modifiedPages = [];
+		$modifiedPages = $this->detectModifiedPages( $categories );
 
-		// Check each category and its properties using schema-based hashes
-		foreach ( $categories as $category ) {
-			$categoryName = $category->getName();
-			$pageName = "Category:$categoryName";
-
-			$currentHash = $hashComputer->computeCategoryModelHash( $category );
-			$storedHash = $storedHashes[$pageName]['generated'] ?? '';
-			if ( $storedHash !== '' && $currentHash !== $storedHash ) {
-				$modifiedPages[$pageName] = true;
-			}
-
-			// Check all properties used by this category
-			$allProperties = $category->getAllProperties();
-			foreach ( $allProperties as $propertyName ) {
-				$propPageName = "Property:$propertyName";
-				if ( isset( $modifiedPages[$propPageName] ) ) {
-					continue; // Already checked
-				}
-
-				$propModel = $propertyStore->readProperty( $propertyName );
-				if ( $propModel ) {
-					$currentHash = $hashComputer->computePropertyModelHash( $propModel );
-					$storedHash = $storedHashes[$propPageName]['generated'] ?? '';
-					if ( $storedHash !== '' && $currentHash !== $storedHash ) {
-						$modifiedPages[$propPageName] = true;
-					}
-				}
-			}
-		}
-
-		$html = Html::openElement(
-			'table',
-			[ 'class' => 'wikitable sortable semanticschemas-table' ]
-		);
+		$html = Html::openElement( 'table', [ 'class' => 'wikitable sortable semanticschemas-table' ] );
 
 		$html .= Html::openElement( 'thead' );
 		$html .= Html::openElement( 'tr' );
@@ -662,19 +722,7 @@ class SpecialSemanticSchemas extends SpecialPage {
 		$html .= Html::openElement( 'tbody' );
 		foreach ( $categories as $category ) {
 			$name = $category->getName();
-			$pageName = "Category:$name";
-
-			// Check if this category or any of its properties are modified
-			$isModified = isset( $modifiedPages["Category:$name"] );
-			if ( !$isModified ) {
-				// Check if any properties are modified
-				foreach ( $category->getAllProperties() as $propName ) {
-					if ( isset( $modifiedPages["Property:$propName"] ) ) {
-						$isModified = true;
-						break;
-					}
-				}
-			}
+			$isModified = $this->isCategoryModified( $category, $modifiedPages );
 
 			$html .= Html::openElement( 'tr' );
 			$html .= Html::element( 'td', [], $name );
@@ -683,30 +731,24 @@ class SpecialSemanticSchemas extends SpecialPage {
 			$html .= Html::rawElement(
 				'td',
 				[],
-				$this->renderBadgeLink(
+				$this->renderAvailabilityBadge(
 					$templateGenerator->semanticTemplateExists( $name ),
-					$this->msg( 'semanticschemas-badge-available' )->text(),
-					$this->msg( 'semanticschemas-badge-missing' )->text(),
 					$this->getTemplateTitle( $name )
 				)
 			);
 			$html .= Html::rawElement(
 				'td',
 				[],
-				$this->renderBadgeLink(
+				$this->renderAvailabilityBadge(
 					$formGenerator->formExists( $name ),
-					$this->msg( 'semanticschemas-badge-available' )->text(),
-					$this->msg( 'semanticschemas-badge-missing' )->text(),
 					$this->getFormTitle( $name )
 				)
 			);
 			$html .= Html::rawElement(
 				'td',
 				[],
-				$this->renderBadgeLink(
+				$this->renderAvailabilityBadge(
 					$displayGenerator->displayStubExists( $name ),
-					$this->msg( 'semanticschemas-badge-available' )->text(),
-					$this->msg( 'semanticschemas-badge-missing' )->text(),
 					$this->getDisplayTitle( $name )
 				)
 			);
@@ -739,49 +781,21 @@ class SpecialSemanticSchemas extends SpecialPage {
 		$inspector = new OntologyInspector();
 		$result = $inspector->validateWikiState();
 
-		$body = Html::rawElement(
-			'div',
-			[ 'class' => 'semanticschemas-card-header' ],
-			Html::element(
-				'h3',
-				[ 'class' => 'semanticschemas-card-title' ],
-				$this->msg( 'semanticschemas-validate-title' )->text()
-			) .
-			Html::element(
-				'p',
-				[ 'class' => 'semanticschemas-card-subtitle' ],
-				$this->msg( 'semanticschemas-validate-description' )->text()
-			)
+		$body = $this->renderCardHeader(
+			$this->msg( 'semanticschemas-validate-title' )->text(),
+			$this->msg( 'semanticschemas-validate-description' )->text()
 		);
 
 		if ( empty( $result['errors'] ) ) {
-			$body .= Html::successBox(
-				$this->msg( 'semanticschemas-validate-success' )->text()
-			);
+			$body .= Html::successBox( $this->msg( 'semanticschemas-validate-success' )->text() );
 		} else {
-			$body .= Html::element(
-				'h3',
-				[],
-				$this->msg( 'semanticschemas-validate-errors' )->text()
-			);
-			$body .= Html::openElement( 'ul' );
-			foreach ( $result['errors'] as $error ) {
-				$body .= Html::element( 'li', [], $error );
-			}
-			$body .= Html::closeElement( 'ul' );
+			$body .= Html::element( 'h3', [], $this->msg( 'semanticschemas-validate-errors' )->text() );
+			$body .= $this->renderList( $result['errors'] );
 		}
 
 		if ( !empty( $result['warnings'] ) ) {
-			$body .= Html::element(
-				'h3',
-				[],
-				$this->msg( 'semanticschemas-validate-warnings' )->text()
-			);
-			$body .= Html::openElement( 'ul' );
-			foreach ( $result['warnings'] as $warning ) {
-				$body .= Html::element( 'li', [], $warning );
-			}
-			$body .= Html::closeElement( 'ul' );
+			$body .= Html::element( 'h3', [], $this->msg( 'semanticschemas-validate-warnings' )->text() );
+			$body .= $this->renderList( $result['warnings'] );
 		}
 
 		$modifiedPages = $result['modifiedPages'] ?? [];
@@ -793,11 +807,7 @@ class SpecialSemanticSchemas extends SpecialPage {
 					->numParams( count( $modifiedPages ) )
 					->text()
 			);
-			$body .= Html::openElement( 'ul' );
-			foreach ( $modifiedPages as $pageName ) {
-				$body .= Html::element( 'li', [], $pageName );
-			}
-			$body .= Html::closeElement( 'ul' );
+			$body .= $this->renderList( $modifiedPages );
 		}
 
 		$output->addHTML(
@@ -888,43 +898,89 @@ class SpecialSemanticSchemas extends SpecialPage {
 
 		$form .= Html::closeElement( 'form' );
 
+		$helpItems = [
+			$this->msg( 'semanticschemas-generate-description' )->text(),
+			$this->msg( 'semanticschemas-generate-tip' )->text(),
+			$this->msg( 'semanticschemas-status-modified-outside' )->text(),
+		];
 		$helper = Html::rawElement(
 			'div',
 			[ 'class' => 'semanticschemas-help-card' ],
 			Html::element( 'strong', [], $this->msg( 'semanticschemas-generate-title' )->text() ) .
-			Html::openElement( 'ul' ) .
-			Html::element( 'li', [], $this->msg( 'semanticschemas-generate-description' )->text() ) .
-			Html::element( 'li', [], $this->msg( 'semanticschemas-generate-tip' )->text() ) .
-			Html::element( 'li', [], $this->msg( 'semanticschemas-status-modified-outside' )->text() ) .
-			Html::closeElement( 'ul' )
+			$this->renderList( $helpItems )
 		);
 
-		$card = Html::rawElement(
+		$formGrid = Html::rawElement(
 			'div',
-			[ 'class' => 'semanticschemas-card' ],
-			Html::rawElement(
-				'div',
-				[ 'class' => 'semanticschemas-card-header' ],
-				Html::element(
-					'h3',
-					[ 'class' => 'semanticschemas-card-title' ],
-					$this->msg( 'semanticschemas-generate-title' )->text()
-				) .
-				Html::element(
-					'p',
-					[ 'class' => 'semanticschemas-card-subtitle' ],
-					$this->msg( 'semanticschemas-generate-description' )->text()
-				)
-			) .
-			Html::rawElement(
-				'div',
-				[ 'class' => 'semanticschemas-form-grid' ],
-				Html::rawElement( 'div', [], $form ) .
-				Html::rawElement( 'div', [], $helper )
-			)
+			[ 'class' => 'semanticschemas-form-grid' ],
+			Html::rawElement( 'div', [], $form ) .
+			Html::rawElement( 'div', [], $helper )
+		);
+
+		$card = $this->renderCard(
+			$this->msg( 'semanticschemas-generate-title' )->text(),
+			$this->msg( 'semanticschemas-generate-description' )->text(),
+			$formGrid
 		);
 
 		$output->addHTML( $this->wrapShell( $card ) );
+	}
+
+	/**
+	 * Compute hashes for all schema entities (categories, properties, subobjects).
+	 *
+	 * @return array<string, string> Map of page names to their computed hashes
+	 */
+	private function computeAllSchemaHashes(): array {
+		$categoryStore = new WikiCategoryStore();
+		$propertyStore = new WikiPropertyStore();
+		$subobjectStore = new WikiSubobjectStore();
+		$hashComputer = new PageHashComputer();
+
+		$pageHashes = [];
+
+		foreach ( $categoryStore->getAllCategories() as $category ) {
+			$name = $category->getName();
+			$pageHashes["Category:$name"] = $hashComputer->computeCategoryModelHash( $category );
+		}
+
+		foreach ( $propertyStore->getAllProperties() as $property ) {
+			$name = $property->getName();
+			$pageHashes["Property:$name"] = $hashComputer->computePropertyModelHash( $property );
+		}
+
+		foreach ( $subobjectStore->getAllSubobjects() as $subobject ) {
+			$name = $subobject->getName();
+			$pageHashes["Subobject:$name"] = $hashComputer->computeSubobjectModelHash( $subobject );
+		}
+
+		return $pageHashes;
+	}
+
+	/**
+	 * Build a complete category map for inheritance resolution.
+	 *
+	 * Ensures all categories are included so parent relationships resolve correctly.
+	 *
+	 * @param WikiCategoryStore $categoryStore
+	 * @return array<string, object> Map of category names to CategoryModel objects
+	 */
+	private function buildCategoryMap( WikiCategoryStore $categoryStore ): array {
+		$categoryMap = [];
+		foreach ( $categoryStore->getAllCategories() as $cat ) {
+			$categoryMap[$cat->getName()] = $cat;
+		}
+		return $categoryMap;
+	}
+
+	/**
+	 * Close the progress container HTML elements.
+	 */
+	private function closeProgressContainer(): void {
+		$this->getOutput()->addHTML(
+			Html::closeElement( 'div' ) .
+			Html::closeElement( 'div' )
+		);
 	}
 
 	/**
@@ -937,7 +993,6 @@ class SpecialSemanticSchemas extends SpecialPage {
 		$output = $this->getOutput();
 		$request = $this->getRequest();
 
-		// Rate limiting for generation (expensive operation)
 		if ( $this->checkRateLimit( 'generate' ) ) {
 			$output->addHTML( Html::errorBox(
 				$this->msg( 'semanticschemas-ratelimit-exceeded' )
@@ -954,13 +1009,7 @@ class SpecialSemanticSchemas extends SpecialPage {
 		$displayGenerator = new DisplayStubGenerator();
 
 		try {
-			// Determine target categories
-			if ( $categoryName === '' ) {
-				$categories = $categoryStore->getAllCategories();
-			} else {
-				$single = $categoryStore->readCategory( $categoryName );
-				$categories = $single ? [ $single ] : [];
-			}
+			$categories = $this->getTargetCategories( $categoryStore, $categoryName );
 
 			if ( empty( $categories ) ) {
 				$output->addHTML( Html::errorBox(
@@ -976,29 +1025,9 @@ class SpecialSemanticSchemas extends SpecialPage {
 				Html::openElement( 'div', [ 'class' => 'semanticschemas-progress-log' ] )
 			);
 
-			// Build map for inheritance resolution
-			$categoryMap = [];
-			foreach ( $categories as $cat ) {
-				$categoryMap[$cat->getName()] = $cat;
-			}
-
-			// In many cases, you want to include *all* categories in the resolver,
-			// not only the subset being generated, so parent relationships resolve.
-			$allCategories = $categoryStore->getAllCategories();
-			foreach ( $allCategories as $cat ) {
-				$name = $cat->getName();
-				if ( !isset( $categoryMap[$name] ) ) {
-					$categoryMap[$name] = $cat;
-				}
-			}
-
+			$categoryMap = $this->buildCategoryMap( $categoryStore );
 			$resolver = new InheritanceResolver( $categoryMap );
-
-			$stateManager = new StateManager();
-			$hashComputer = new PageHashComputer();
-			$pageCreator = new PageCreator();
-			$propertyStore = new WikiPropertyStore();
-			$subobjectStore = new WikiSubobjectStore();
+			$generateDisplay = $request->getBool( 'generate-display' );
 
 			$successCount = 0;
 			$totalCount = count( $categories );
@@ -1006,7 +1035,6 @@ class SpecialSemanticSchemas extends SpecialPage {
 			foreach ( $categories as $category ) {
 				$name = $category->getName();
 
-				// Progress feedback for each category
 				$output->addHTML(
 					Html::element(
 						'div',
@@ -1016,22 +1044,18 @@ class SpecialSemanticSchemas extends SpecialPage {
 				);
 
 				try {
-					// Effective category (merged properties)
 					$effective = $resolver->getEffectiveCategory( $name );
-					// Ancestor chain for layout grouping (Option C)
 					$ancestors = $resolver->getAncestors( $name );
 
 					$templateGenerator->generateAllTemplates( $effective );
 					$formGenerator->generateAndSaveForm( $effective, $ancestors );
 
-					// Only generate display stub if explicitly requested (to avoid overwriting customizations)
-					if ( $request->getBool( 'generate-display' ) ) {
+					if ( $generateDisplay ) {
 						$displayGenerator->generateOrUpdateDisplayStub( $effective );
 					}
 
 					$successCount++;
 				} catch ( \Exception $e ) {
-					// Log error and show in UI, but continue with other categories
 					wfLogWarning( "SemanticSchemas generate failed for category '$name': " . $e->getMessage() );
 					$output->addHTML(
 						Html::element(
@@ -1045,48 +1069,19 @@ class SpecialSemanticSchemas extends SpecialPage {
 				}
 			}
 
-			// Compute and store hashes for all generated pages (schema-based)
-			$pageHashes = [];
+			$pageHashes = $this->computeAllSchemaHashes();
 
-			// Hash all categories
-			$allCategories = $categoryStore->getAllCategories();
-			foreach ( $allCategories as $category ) {
-				$categoryName = $category->getName();
-				$hash = $hashComputer->computeCategoryModelHash( $category );
-				$pageHashes["Category:$categoryName"] = $hash;
-			}
-
-			// Hash all properties
-			$allProperties = $propertyStore->getAllProperties();
-			foreach ( $allProperties as $property ) {
-				$propertyName = $property->getName();
-				$hash = $hashComputer->computePropertyModelHash( $property );
-				$pageHashes["Property:$propertyName"] = $hash;
-			}
-
-			// Hash all subobjects
-			$allSubobjects = $subobjectStore->getAllSubobjects();
-			foreach ( $allSubobjects as $subobject ) {
-				$subobjectName = $subobject->getName();
-				$hash = $hashComputer->computeSubobjectModelHash( $subobject );
-				$pageHashes["Subobject:$subobjectName"] = $hash;
-			}
-
-			// Store hashes and clear dirty flag
 			if ( !empty( $pageHashes ) ) {
+				$stateManager = new StateManager();
 				$stateManager->setPageHashes( $pageHashes );
 				$stateManager->clearDirty();
 			}
 
 			if ( $progressContainerOpen ) {
-				$output->addHTML(
-					Html::closeElement( 'div' ) . // closes log
-					Html::closeElement( 'div' )   // closes progress container
-				);
+				$this->closeProgressContainer();
 				$progressContainerOpen = false;
 			}
 
-			// Log the operation
 			$this->logOperation( 'generate', 'Template/form generation completed', [
 				'categoryFilter' => $categoryName ?: 'all',
 				'categoriesProcessed' => $successCount,
@@ -1103,12 +1098,9 @@ class SpecialSemanticSchemas extends SpecialPage {
 			);
 		} catch ( \Exception $e ) {
 			if ( $progressContainerOpen ) {
-				$output->addHTML(
-					Html::closeElement( 'div' ) .
-					Html::closeElement( 'div' )
-				);
+				$this->closeProgressContainer();
 			}
-			// Log exception
+
 			$this->logOperation( 'generate', 'Generation exception: ' . $e->getMessage(), [
 				'exception' => get_class( $e ),
 				'categoryFilter' => $categoryName ?? '',
@@ -1121,118 +1113,59 @@ class SpecialSemanticSchemas extends SpecialPage {
 	}
 
 	/**
-	 * Show diff page: compare an external schema to current wiki-derived schema.
+	 * Get target categories for generation based on filter.
 	 *
-	 * @deprecated This method is no longer accessible via the UI. The diff functionality
-	 *             was removed from the navigation tabs. This code is retained for potential
-	 *             future use or as a reference implementation. Consider removing in a future
-	 *             version if the functionality is not restored.
+	 * @param WikiCategoryStore $categoryStore
+	 * @param string $categoryName Filter by name, or empty for all
+	 * @return array Array of CategoryModel objects
 	 */
-	private function showDiff(): void {
-		$output = $this->getOutput();
-		$request = $this->getRequest();
-
-		$output->setPageTitle( $this->msg( 'semanticschemas-diff-title' )->text() );
-
-		if ( $request->wasPosted() && $request->getVal( 'action' ) === 'diff' ) {
-			if ( !$this->getUser()->matchEditToken( $request->getVal( 'token' ) ) ) {
-				$output->addHTML( Html::errorBox( 'Invalid edit token' ) );
-				return;
-			}
-			$this->processDiff();
-			return;
+	private function getTargetCategories( WikiCategoryStore $categoryStore, string $categoryName ): array {
+		if ( $categoryName === '' ) {
+			return $categoryStore->getAllCategories();
 		}
 
-		$form = Html::openElement( 'form', [
-			'method' => 'post',
-			'enctype' => 'multipart/form-data',
-			'action' => $this->getPageTitle( 'diff' )->getLocalURL()
-		] );
-
-		$form .= Html::openElement( 'div', [ 'class' => 'semanticschemas-form-group' ] );
-		$form .= Html::element(
-			'label',
-			[],
-			$this->msg( 'semanticschemas-diff-file' )->text()
-		);
-		$form .= Html::element( 'textarea', [
-			'name' => 'schematext',
-			'rows' => '12',
-			'cols' => '80'
-		], '' );
-		$form .= Html::closeElement( 'div' );
-
-		$form .= Html::hidden( 'action', 'diff' );
-		$form .= Html::hidden( 'token', $this->getUser()->getEditToken() );
-
-		$form .= Html::submitButton(
-			$this->msg( 'semanticschemas-diff-button' )->text(),
-			[ 'class' => 'mw-ui-button mw-ui-progressive' ]
-		);
-
-		$form .= Html::closeElement( 'form' );
-
-		$card = Html::rawElement(
-			'div',
-			[ 'class' => 'semanticschemas-card' ],
-			Html::rawElement(
-				'div',
-				[ 'class' => 'semanticschemas-card-header' ],
-				Html::element(
-					'h3',
-					[ 'class' => 'semanticschemas-card-title' ],
-					$this->msg( 'semanticschemas-diff-title' )->text()
-				) .
-				Html::element(
-					'p',
-					[ 'class' => 'semanticschemas-card-subtitle' ],
-					$this->msg( 'semanticschemas-diff-description' )->text()
-				)
-			) .
-			$form
-		);
-
-		$output->addHTML( $this->wrapShell( $card ) );
+		$single = $categoryStore->readCategory( $categoryName );
+		return $single ? [ $single ] : [];
 	}
 
 	/**
-	 * Process diff submission: external schema vs current wiki schema.
+	 * Render the hierarchy category selection form.
 	 *
-	 * @deprecated This method is no longer accessible via the UI. The diff functionality
-	 *             was removed from the navigation tabs. This code is retained for potential
-	 *             future use or as a reference implementation. Consider removing in a future
-	 *             version if the functionality is not restored.
+	 * @param string $categoryValue Current category value from request
+	 * @return string HTML form
 	 */
-	private function processDiff(): void {
-		$output = $this->getOutput();
-		$request = $this->getRequest();
+	private function renderHierarchyForm( string $categoryValue ): string {
+		$form = Html::openElement( 'form', [
+			'method' => 'get',
+			'class' => 'ss-hierarchy-special-form',
+		] );
 
-		try {
-			$content = $request->getText( 'schematext' );
-			if ( trim( $content ) === '' ) {
-				$output->addHTML( Html::errorBox( 'No schema provided' ) );
-				return;
-			}
+		$form .= Html::element( 'input', [
+			'type' => 'hidden',
+			'name' => 'title',
+			'value' => $this->getPageTitle( 'hierarchy' )->getPrefixedText(),
+		] );
 
-			$loader = new SchemaLoader();
-			$fileSchema = $loader->loadFromContent( $content );
+		$form .= Html::element( 'label', [
+			'for' => 'ss-hierarchy-category-input',
+		], $this->msg( 'semanticschemas-hierarchy-category-label' )->text() );
 
-			// NOTE: Diff functionality has been moved to a future schema
-			// management extension. This code path is kept only as a
-			// reference and no longer executes via the UI.
-			$inspector = new OntologyInspector();
-			$wikiSchema = $inspector->validateWikiState();
+		$form .= Html::element( 'input', [
+			'type' => 'text',
+			'id' => 'ss-hierarchy-category-input',
+			'name' => 'category',
+			'value' => $categoryValue,
+			'placeholder' => 'e.g., PhDStudent',
+		] );
 
-			$comparer = new SchemaComparer();
-			$diff = $comparer->compare( $fileSchema, $wikiSchema );
-			$summary = $comparer->generateSummary( $diff );
+		$form .= Html::element( 'button', [
+			'type' => 'submit',
+			'class' => 'mw-ui-button mw-ui-progressive',
+		], $this->msg( 'semanticschemas-hierarchy-show-button' )->text() );
 
-			$output->addHTML(
-				Html::element( 'pre', [], $summary )
-			);
-		} catch ( \Exception $e ) {
-			$output->addHTML( Html::errorBox( 'Error: ' . $e->getMessage() ) );
-		}
+		$form .= Html::closeElement( 'form' );
+
+		return $form;
 	}
 
 	/**
@@ -1244,49 +1177,12 @@ class SpecialSemanticSchemas extends SpecialPage {
 	 */
 	private function showHierarchy(): void {
 		$output = $this->getOutput();
-		$request = $this->getRequest();
 		$output->setPageTitle( $this->msg( 'semanticschemas-hierarchy-title' )->text() );
-
-		// Add the hierarchy module
 		$output->addModules( 'ext.semanticschemas.hierarchy' );
 
-		// Form for category selection
-		$form = Html::openElement( 'form', [
-			'method' => 'get',
-			'class' => 'ss-hierarchy-special-form',
-		] );
+		$categoryValue = $this->getRequest()->getText( 'category', '' );
+		$form = $this->renderHierarchyForm( $categoryValue );
 
-		// Hidden field to maintain the subpage
-		$form .= Html::element( 'input', [
-			'type' => 'hidden',
-			'name' => 'title',
-			'value' => $this->getPageTitle( 'hierarchy' )->getPrefixedText(),
-		] );
-
-		// Category input field
-		$form .= Html::element( 'label', [
-			'for' => 'ss-hierarchy-category-input',
-		], $this->msg( 'semanticschemas-hierarchy-category-label' )->text() );
-
-		$categoryValue = $request->getText( 'category', '' );
-		$form .= Html::element( 'input', [
-			'type' => 'text',
-			'id' => 'ss-hierarchy-category-input',
-			'name' => 'category',
-			'value' => $categoryValue,
-			'placeholder' => 'e.g., PhDStudent',
-		] );
-
-		// Submit button
-		$form .= Html::element( 'button', [
-			'type' => 'submit',
-			'class' => 'mw-ui-button mw-ui-progressive',
-		], $this->msg( 'semanticschemas-hierarchy-show-button' )->text() );
-
-		$form .= Html::closeElement( 'form' );
-
-		// Container for hierarchy visualization
-		// If a category was submitted, add it as a data attribute for JS to pick up
 		$containerAttrs = [
 			'id' => 'ss-hierarchy-container',
 			'class' => 'ss-hierarchy-block',
@@ -1296,26 +1192,10 @@ class SpecialSemanticSchemas extends SpecialPage {
 		}
 		$container = Html::rawElement( 'div', $containerAttrs, '' );
 
-		// Build the card
-		$card = Html::rawElement(
-			'div',
-			[ 'class' => 'semanticschemas-card' ],
-			Html::rawElement(
-				'div',
-				[ 'class' => 'semanticschemas-card-header' ],
-				Html::element(
-					'h3',
-					[ 'class' => 'semanticschemas-card-title' ],
-					$this->msg( 'semanticschemas-hierarchy-title' )->text()
-				) .
-				Html::element(
-					'p',
-					[ 'class' => 'semanticschemas-card-subtitle' ],
-					$this->msg( 'semanticschemas-hierarchy-tree-title' )->text()
-				)
-			) .
-			$form .
-			$container
+		$card = $this->renderCard(
+			$this->msg( 'semanticschemas-hierarchy-title' )->text(),
+			$this->msg( 'semanticschemas-hierarchy-tree-title' )->text(),
+			$form . $container
 		);
 
 		$output->addHTML( $this->wrapShell( $card ) );
