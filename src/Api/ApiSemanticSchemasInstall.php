@@ -25,6 +25,7 @@ use MediaWiki\Extension\SemanticSchemas\Schema\SchemaLoader;
  * The solution is to install in layers with separate HTTP requests, allowing SMW's job
  * queue to process each layer before proceeding:
  *
+ *   Layer 0: Templates - property display templates (no SMW dependencies)
  *   Layer 1: Property types only (just [[Has type::...]]) - establishes type registry
  *   Layer 2: Full property annotations - adds labels, descriptions, constraints
  *   Layer 3: Subobjects - can now reference properly-typed properties
@@ -35,6 +36,7 @@ use MediaWiki\Extension\SemanticSchemas\Schema\SchemaLoader;
  *
  * Endpoints:
  *   api.php?action=semanticschemas-install&step=status    - Get job count and install status
+ *   api.php?action=semanticschemas-install&step=layer0    - Install property display templates
  *   api.php?action=semanticschemas-install&step=layer1    - Install property types only
  *   api.php?action=semanticschemas-install&step=layer2    - Install properties with full annotations
  *   api.php?action=semanticschemas-install&step=layer3    - Install subobjects
@@ -63,6 +65,7 @@ class ApiSemanticSchemasInstall extends ApiBase {
 				$this->executeStatus( $installer, $configPath );
 				break;
 
+			case 'layer0':
 			case 'layer1':
 			case 'layer2':
 			case 'layer3':
@@ -80,12 +83,16 @@ class ApiSemanticSchemasInstall extends ApiBase {
 	 */
 	private function executeStatus( ExtensionConfigInstaller $installer, string $configPath ): void {
 		$jobCount = $installer->getPendingJobCount();
+		$templatesInstalled = $installer->areTemplatesInstalled( $configPath );
 		$propertiesInstalled = $installer->arePropertiesInstalled( $configPath );
+		$subobjectsInstalled = $installer->areSubobjectsInstalled( $configPath );
 		$categoriesInstalled = $installer->areCategoriesInstalled( $configPath );
 
 		$this->getResult()->addValue( null, 'status', [
 			'pendingJobs' => $jobCount,
+			'templatesInstalled' => $templatesInstalled,
 			'propertiesInstalled' => $propertiesInstalled,
+			'subobjectsInstalled' => $subobjectsInstalled,
 			'categoriesInstalled' => $categoriesInstalled,
 			'ready' => $jobCount === 0,
 		] );
@@ -121,6 +128,11 @@ class ApiSemanticSchemasInstall extends ApiBase {
 		$layerName = '';
 
 		switch ( $step ) {
+			case 'layer0':
+				$layerName = 'Templates';
+				$result = $installer->applyTemplatesOnly( $schema );
+				break;
+
 			case 'layer1':
 				$layerName = 'Property Types';
 				$result = $installer->applyPropertiesTypeOnly( $schema );
@@ -163,7 +175,7 @@ class ApiSemanticSchemasInstall extends ApiBase {
 	public function getAllowedParams() {
 		return [
 			'step' => [
-				ApiBase::PARAM_TYPE => [ 'status', 'layer1', 'layer2', 'layer3', 'layer4' ],
+				ApiBase::PARAM_TYPE => [ 'status', 'layer0', 'layer1', 'layer2', 'layer3', 'layer4' ],
 				ApiBase::PARAM_REQUIRED => true,
 			],
 			'token' => [

@@ -473,6 +473,7 @@ class SpecialSemanticSchemas extends SpecialPage {
 		}
 
 		$wouldCreate = $preview['would_create'] ?? [];
+		$tplCount = count( $wouldCreate['templates'] ?? [] );
 		$propCount = count( $wouldCreate['properties'] ?? [] );
 		$catCount = count( $wouldCreate['categories'] ?? [] );
 		$subCount = count( $wouldCreate['subobjects'] ?? [] );
@@ -494,6 +495,7 @@ class SpecialSemanticSchemas extends SpecialPage {
 			Html::rawElement( 'div', [ 'class' => 'ss-install-preview', 'style' => $previewStyle ],
 				Html::element( 'strong', [], 'Items to install:' ) .
 				Html::rawElement( 'ul', [],
+					Html::element( 'li', [], "Templates: $tplCount" ) .
 					Html::element( 'li', [], "Properties: $propCount" ) .
 					Html::element( 'li', [], "Subobjects: $subCount" ) .
 					Html::element( 'li', [], "Categories: $catCount" )
@@ -502,6 +504,11 @@ class SpecialSemanticSchemas extends SpecialPage {
 
 			// Progress display
 			Html::rawElement( 'div', [ 'id' => 'ss-progress', 'style' => 'display: none; margin: 1em 0;' ],
+				Html::rawElement( 'div', [ 'id' => 'ss-layer0', 'class' => 'ss-layer', 'style' => $layerStyle ],
+					Html::rawElement( 'span', [ 'class' => 'ss-layer-status' ], '○' ) . ' ' .
+					Html::element( 'span', [ 'class' => 'ss-layer-name' ], 'Layer 0: Templates' ) .
+					Html::element( 'span', [ 'class' => 'ss-layer-info', 'style' => $infoStyle ], '' )
+				) .
 				Html::rawElement( 'div', [ 'id' => 'ss-layer1', 'class' => 'ss-layer', 'style' => $layerStyle ],
 					Html::rawElement( 'span', [ 'class' => 'ss-layer-status' ], '○' ) . ' ' .
 					Html::element( 'span', [ 'class' => 'ss-layer-name' ], 'Layer 1: Property Types' ) .
@@ -555,8 +562,9 @@ class SpecialSemanticSchemas extends SpecialPage {
 (function() {
 	var token = $token;
 	var apiUrl = $apiUrl;
-	var layers = ['layer1', 'layer2', 'layer3', 'layer4'];
+	var layers = ['layer0', 'layer1', 'layer2', 'layer3', 'layer4'];
 	var layerNames = {
+		'layer0': 'Templates',
 		'layer1': 'Property Types',
 		'layer2': 'Property Annotations',
 		'layer3': 'Subobjects',

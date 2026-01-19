@@ -12,7 +12,7 @@ use MediaWiki\Extension\SemanticSchemas\Store\WikiSubobjectStore;
  * ------------------------
  * Applies the bundled extension configuration schema
  * (resources/extension-config.json) to the wiki by creating or
- * updating Category:, Property:, and Subobject: pages.
+ * updating Category:, Property:, Template:, and Subobject: pages.
  *
  * This is a minimal, internal helper that reuses the canonical
  * schema models + Wiki*Store classes, and writes via PageCreator.
@@ -21,8 +21,9 @@ use MediaWiki\Extension\SemanticSchemas\Store\WikiSubobjectStore;
  *
  * The installer provides methods for layer-by-layer installation to work around
  * SMW's asynchronous property type registration. When called via the API
- * (ApiSemanticSchemasInstall), installation happens in 4 layers:
+ * (ApiSemanticSchemasInstall), installation happens in 5 layers:
  *
+ *   - Layer 0: applyTemplatesOnly() - Creates property display templates (no SMW dependencies)
  *   - Layer 1: applyPropertiesTypeOnly() - Creates properties with just [[Has type::...]]
  *   - Layer 2: applyPropertiesFull() - Updates properties with all annotations
  *   - Layer 3: applySubobjectsOnly() - Creates subobject definitions
@@ -61,18 +62,27 @@ class ExtensionConfigInstaller {
 	}
 
 	/**
-	 * Check if the base extension configuration has been installed.
+	 * Check if the base extension configuration has been fully installed.
 	 *
-	 * Checks for the existence of a key property from extension-config.json
-	 * to determine if installation has occurred.
+	 * Checks for the existence of key items from each layer to ensure
+	 * the full installation completed successfully. This prevents the
+	 * install button from disappearing if installation was interrupted.
 	 *
-	 * @return bool True if the base configuration appears to be installed
+	 * @return bool True if the base configuration appears to be fully installed
 	 */
 	public function isInstalled(): bool {
-		// Check if a core property from extension-config.json exists
-		// Property:Has type is a fundamental property defined in the base config
-		$title = $this->pageCreator->makeTitle( 'Has type', SMW_NS_PROPERTY );
-		return $title && $this->pageCreator->pageExists( $title );
+		$configPath = __DIR__ . '/../../resources/extension-config.json';
+
+		if ( !file_exists( $configPath ) ) {
+			return false;
+		}
+
+		// Check all layers - templates, properties, subobjects, and categories
+		// If any layer is incomplete, we consider installation incomplete
+		return $this->areTemplatesInstalled( $configPath )
+			&& $this->arePropertiesInstalled( $configPath )
+			&& $this->areSubobjectsInstalled( $configPath )
+			&& $this->areCategoriesInstalled( $configPath );
 	}
 
 	/**
@@ -111,11 +121,13 @@ class ExtensionConfigInstaller {
 			'errors' => $validation['errors'],
 			'warnings' => $validation['warnings'],
 			'would_create' => [
+				'templates' => [],
 				'properties' => [],
 				'categories' => [],
 				'subobjects' => [],
 			],
 			'would_update' => [
+				'templates' => [],
 				'properties' => [],
 				'categories' => [],
 				'subobjects' => [],
@@ -126,9 +138,20 @@ class ExtensionConfigInstaller {
 			return $result;
 		}
 
+		$templates = $schema['templates'] ?? [];
 		$properties = $schema['properties'] ?? [];
 		$categories = $schema['categories'] ?? [];
 		$subobjects = $schema['subobjects'] ?? [];
+
+		// Check templates
+		foreach ( array_keys( $templates ) as $name ) {
+			$title = $this->pageCreator->makeTitle( $name, NS_TEMPLATE );
+			if ( $title && $this->pageCreator->pageExists( $title ) ) {
+				$result['would_update']['templates'][] = $name;
+			} else {
+				$result['would_create']['templates'][] = $name;
+			}
+		}
 
 		// Check properties
 		foreach ( array_keys( $properties ) as $name ) {
@@ -316,6 +339,54 @@ class ExtensionConfigInstaller {
 	}
 
 	/**
+	 * Check if templates from the schema are installed.
+	 *
+	 * @param string $filePath
+	 * @return bool
+	 */
+	public function areTemplatesInstalled( string $filePath ): bool {
+		$schema = $this->loader->loadFromFile( $filePath );
+		$templates = $schema['templates'] ?? [];
+
+		if ( empty( $templates ) ) {
+			return true;
+		}
+
+		foreach ( array_keys( $templates ) as $name ) {
+			$title = $this->pageCreator->makeTitle( $name, NS_TEMPLATE );
+			if ( !$title || !$this->pageCreator->pageExists( $title ) ) {
+				return false;
+			}
+		}
+
+		return true;
+	}
+
+	/**
+	 * Check if subobjects from the schema are installed.
+	 *
+	 * @param string $filePath
+	 * @return bool
+	 */
+	public function areSubobjectsInstalled( string $filePath ): bool {
+		$schema = $this->loader->loadFromFile( $filePath );
+		$subobjects = $schema['subobjects'] ?? [];
+
+		if ( empty( $subobjects ) ) {
+			return true;
+		}
+
+		foreach ( array_keys( $subobjects ) as $name ) {
+			$title = $this->pageCreator->makeTitle( $name, NS_SUBOBJECT );
+			if ( !$title || !$this->pageCreator->pageExists( $title ) ) {
+				return false;
+			}
+		}
+
+		return true;
+	}
+
+	/**
 	 * Get the count of pending jobs (all types).
 	 *
 	 * @return int
@@ -334,6 +405,45 @@ class ExtensionConfigInstaller {
 		} catch ( \Throwable $e ) {
 			return 0;
 		}
+	}
+
+	/**
+	 * Apply templates only (Layer 0).
+	 * This creates property display template pages with no SMW dependencies.
+	 *
+	 * @param array $schema
+	 * @return array
+	 */
+	public function applyTemplatesOnly( array $schema ): array {
+		$result = [
+			'errors' => [],
+			'warnings' => [],
+			'created' => [ 'templates' => [] ],
+			'updated' => [ 'templates' => [] ],
+			'failed' => [ 'templates' => [] ],
+		];
+
+		$templates = $schema['templates'] ?? [];
+
+		foreach ( $templates as $name => $data ) {
+			$title = $this->pageCreator->makeTitle( $name, NS_TEMPLATE );
+			$existed = $title && $this->pageCreator->pageExists( $title );
+
+			$content = $data['content'] ?? '';
+			$ok = $this->pageCreator->createOrUpdatePage(
+				$title,
+				$content,
+				'SemanticSchemas: Install property template'
+			);
+
+			if ( $ok ) {
+				$result[$existed ? 'updated' : 'created']['templates'][] = $name;
+			} else {
+				$result['failed']['templates'][] = $name;
+			}
+		}
+
+		return $result;
 	}
 
 	/**
@@ -480,16 +590,19 @@ class ExtensionConfigInstaller {
 			'errors' => $validation['errors'],
 			'warnings' => $validation['warnings'],
 			'created' => [
+				'templates' => [],
 				'properties' => [],
 				'categories' => [],
 				'subobjects' => [],
 			],
 			'updated' => [
+				'templates' => [],
 				'properties' => [],
 				'categories' => [],
 				'subobjects' => [],
 			],
 			'failed' => [
+				'templates' => [],
 				'properties' => [],
 				'categories' => [],
 				'subobjects' => [],
@@ -501,9 +614,32 @@ class ExtensionConfigInstaller {
 			return $result;
 		}
 
+		$templates = $schema['templates'] ?? [];
 		$categories = $schema['categories'] ?? [];
 		$properties = $schema['properties'] ?? [];
 		$subobjects = $schema['subobjects'] ?? [];
+
+		// =====================================================================
+		// Templates (Layer 0) - No SMW dependencies
+		// Create property display templates before anything else.
+		// =====================================================================
+		foreach ( $templates as $name => $data ) {
+			$title = $this->pageCreator->makeTitle( $name, NS_TEMPLATE );
+			$existed = $title && $this->pageCreator->pageExists( $title );
+
+			$content = $data['content'] ?? '';
+			$ok = $this->pageCreator->createOrUpdatePage(
+				$title,
+				$content,
+				'SemanticSchemas: Install property template'
+			);
+
+			if ( $ok ) {
+				$result[$existed ? 'updated' : 'created']['templates'][] = $name;
+			} else {
+				$result['failed']['templates'][] = $name;
+			}
+		}
 
 		// Track which properties existed before installation
 		$propertyExisted = [];
