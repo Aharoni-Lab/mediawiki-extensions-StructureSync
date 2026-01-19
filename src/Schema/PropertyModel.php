@@ -261,7 +261,16 @@ class PropertyModel {
 	}
 
 	public function getRenderTemplate(): string {
-		return $this->hasTemplate ?? 'Template:Property/Default';
+		// Priority 1: Explicit custom template
+		if ( $this->hasTemplate !== null ) {
+			return $this->hasTemplate;
+		}
+		// Priority 2: Datatype-specific template for Page type
+		if ( $this->isPageType() ) {
+			return 'Template:Property/Page';
+		}
+		// Fallback: Default template
+		return 'Template:Property/Default';
 	}
 
 	public function getTemplateSource(): ?string {
