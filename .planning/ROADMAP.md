@@ -44,7 +44,10 @@ Plans:
 
 **Dependencies:** Phase 1
 
-**Plans:** (created by /gsd:plan-phase)
+**Plans:** 1 plan
+
+Plans:
+- [ ] 02-01-PLAN.md — Smart template fallback logic and verification
 
 **Requirements:**
 - REQ-001: Clickable Wiki Links for Page-Type Properties
@@ -68,8 +71,8 @@ Plans:
 
 | Phase | Status | Requirements | Completion |
 |-------|--------|--------------|------------|
-| 1 - Template Foundation | Verified ✓ | REQ-003, REQ-005 | 100% |
-| 2 - System Integration | Not Started | REQ-001, REQ-002, REQ-004 | 0% |
+| 1 - Template Foundation | Verified | REQ-003, REQ-005 | 100% |
+| 2 - System Integration | Planned | REQ-001, REQ-002, REQ-004 | 0% |
 
 **Overall:** 2/5 requirements complete
 
@@ -92,3 +95,4 @@ Plans:
 *Phase 1 planned: 2026-01-19*
 *Phase 1 complete: 2026-01-19*
 *Phase 1 verified: 2026-01-19 (6/6 must-haves)*
+*Phase 2 planned: 2026-01-19*
