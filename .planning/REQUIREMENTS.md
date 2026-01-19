@@ -108,10 +108,10 @@ Option to display links without namespace prefix while preserving correct link t
 
 | REQ-ID | Feature | Phase | Status |
 |--------|---------|-------|--------|
-| REQ-001 | Wiki links | Phase 2 | Pending |
-| REQ-002 | Multi-value | Phase 2 | Pending |
+| REQ-001 | Wiki links | Phase 2 | Complete |
+| REQ-002 | Multi-value | Phase 2 | Complete |
 | REQ-003 | Empty handling | Phase 1 | Complete |
-| REQ-004 | Smart fallback | Phase 2 | Pending |
+| REQ-004 | Smart fallback | Phase 2 | Complete |
 | REQ-005 | Page template | Phase 1 | Complete |
 
 ---
