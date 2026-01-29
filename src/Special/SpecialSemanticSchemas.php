@@ -1022,40 +1022,6 @@ JAVASCRIPT;
 	}
 
 	/**
-	 * Metadata describing quick actions surfaced on the overview page.
-	 *
-	 * @return array<int, array<string, string>>
-	 */
-	private function getQuickActions(): array {
-		$actions = [
-			[
-				'action' => 'generate',
-				'label' => $this->msg( 'semanticschemas-generate' )->text(),
-				'description' => $this->msg( 'semanticschemas-generate-description' )->text(),
-			],
-			[
-				'action' => 'validate',
-				'label' => $this->msg( 'semanticschemas-validate' )->text(),
-				'description' => $this->msg( 'semanticschemas-validate-description' )->text(),
-			],
-		];
-
-		// Add install config action if base config is not installed
-		$installer = new ExtensionConfigInstaller();
-		if ( !$installer->isInstalled() ) {
-			// Add at the beginning since it's a prerequisite
-			array_unshift( $actions, [
-				'action' => 'install-config',
-				'href' => $this->getPageTitle()->getLocalURL( [ 'action' => 'install-config' ] ),
-				'label' => $this->msg( 'semanticschemas-quick-action-install-config' )->text(),
-				'description' => $this->msg( 'semanticschemas-quick-action-install-config-desc' )->text(),
-			] );
-		}
-
-		return $actions;
-	}
-
-	/**
 	 * Resolve the namespace ID used for Semantic MediaWiki properties.
 	 *
 	 * @return int
@@ -1157,30 +1123,6 @@ JAVASCRIPT;
 	}
 
 	/**
-	 * Render the quick actions section for the overview page.
-	 *
-	 * @return string HTML
-	 */
-	private function renderQuickActionsHtml(): string {
-		$actionsHtml = '';
-		foreach ( $this->getQuickActions() as $action ) {
-			// Use custom href if provided, otherwise generate from action subpage
-			$href = $action['href'] ?? $this->getPageTitle( $action['action'] )->getLocalURL();
-			$actionsHtml .= Html::rawElement(
-				'a',
-				[
-					'href' => $href,
-					'class' => 'semanticschemas-quick-action'
-				],
-				Html::element( 'strong', [], $action['label'] ) .
-				Html::rawElement( 'span', [], $action['description'] )
-			);
-		}
-
-		return Html::rawElement( 'div', [ 'class' => 'semanticschemas-quick-actions' ], $actionsHtml );
-	}
-
-	/**
 	 * Overview page: summarises current schema + category/template/form status.
 	 */
 	private function showOverview(): void {
@@ -1203,19 +1145,13 @@ JAVASCRIPT;
 		$hero = $this->renderOverviewHero( $isDirty );
 		$summaryGrid = $this->renderSummaryGrid( $stats, $state );
 
-		$quickActionsCard = $this->renderCard(
-			$this->msg( 'semanticschemas-overview-quick-actions' )->text(),
-			$this->msg( 'semanticschemas-overview-quick-actions-subtitle' )->text(),
-			$this->renderQuickActionsHtml()
-		);
-
 		$categoryCard = $this->renderCard(
 			$this->msg( 'semanticschemas-overview-summary' )->text(),
 			$this->msg( 'semanticschemas-overview-categories-subtitle' )->text(),
 			Html::rawElement( 'div', [ 'class' => 'semanticschemas-table-wrapper' ], $this->getCategoryStatusTable() )
 		);
 
-		$content = $installBanner . $hero . $summaryGrid . $quickActionsCard . $categoryCard;
+		$content = $installBanner . $hero . $summaryGrid . $categoryCard;
 		$output->addHTML( $this->wrapShell( $content ) );
 	}
 
