@@ -22,51 +22,65 @@ class PageCreatorTest extends MediaWikiIntegrationTestCase {
 
 	/* =========================================================================
 	 * PAGE CREATION
-	 * Note: These tests are skipped due to a Parsoid/MW core compatibility
-	 * issue in the labki-platform Docker image. They work in environments
-	 * where Parsoid is properly configured.
 	 * ========================================================================= */
 
-	/**
-	 * @group Broken
-	 */
 	public function testCreateOrUpdatePageCreatesNewPage(): void {
-		$this->markTestSkipped( 'Parsoid compatibility issue in Docker image' );
+		$title = Title::makeTitle( NS_MAIN, 'NewPage_' . uniqid() );
+
+		$result = $this->pageCreator->createOrUpdatePage( $title, 'Test content', 'Test summary' );
+
+		$this->assertTrue( $result );
+		$this->assertTrue( $this->pageCreator->pageExists( $title ) );
 	}
 
-	/**
-	 * @group Broken
-	 */
 	public function testCreateOrUpdatePageWithContentVerification(): void {
-		$this->markTestSkipped( 'Parsoid compatibility issue in Docker image' );
+		$title = Title::makeTitle( NS_MAIN, 'ContentVerify_' . uniqid() );
+		$content = 'This is the expected content.';
+
+		$this->pageCreator->createOrUpdatePage( $title, $content, 'Create for verification' );
+
+		$actual = $this->pageCreator->getPageContent( $title );
+		$this->assertSame( $content, $actual );
 	}
 
-	/**
-	 * @group Broken
-	 */
 	public function testCreateOrUpdatePageUpdatesExistingPage(): void {
-		$this->markTestSkipped( 'Parsoid compatibility issue in Docker image' );
+		$title = Title::makeTitle( NS_MAIN, 'UpdatePage_' . uniqid() );
+
+		$this->pageCreator->createOrUpdatePage( $title, 'Original content', 'Create' );
+		$this->pageCreator->createOrUpdatePage( $title, 'Updated content', 'Update' );
+
+		$actual = $this->pageCreator->getPageContent( $title );
+		$this->assertSame( 'Updated content', $actual );
 	}
 
-	/**
-	 * @group Broken
-	 */
 	public function testCreateOrUpdatePageWithNoChangeReturnsTrue(): void {
-		$this->markTestSkipped( 'Parsoid compatibility issue in Docker image' );
+		$title = Title::makeTitle( NS_MAIN, 'NoChangePage_' . uniqid() );
+		$content = 'Same content both times';
+
+		$this->pageCreator->createOrUpdatePage( $title, $content, 'Create' );
+		$result = $this->pageCreator->createOrUpdatePage( $title, $content, 'No-op update' );
+
+		$this->assertTrue( $result );
 	}
 
-	/**
-	 * @group Broken
-	 */
 	public function testCreateOrUpdatePageInCategoryNamespace(): void {
-		$this->markTestSkipped( 'Parsoid compatibility issue in Docker image' );
+		$title = Title::makeTitle( NS_CATEGORY, 'TestCat_' . uniqid() );
+
+		$result = $this->pageCreator->createOrUpdatePage( $title, 'Category page content', 'Create category' );
+
+		$this->assertTrue( $result );
+		$this->assertTrue( $this->pageCreator->pageExists( $title ) );
+		$this->assertEquals( NS_CATEGORY, $title->getNamespace() );
 	}
 
-	/**
-	 * @group Broken
-	 */
 	public function testCreateOrUpdatePageInTemplateNamespace(): void {
-		$this->markTestSkipped( 'Parsoid compatibility issue in Docker image' );
+		$title = Title::makeTitle( NS_TEMPLATE, 'TestTpl_' . uniqid() );
+
+		$result = $this->pageCreator->createOrUpdatePage( $title, 'Template page content', 'Create template' );
+
+		$this->assertTrue( $result );
+		$this->assertTrue( $this->pageCreator->pageExists( $title ) );
+		$this->assertEquals( NS_TEMPLATE, $title->getNamespace() );
 	}
 
 	/* =========================================================================
@@ -81,11 +95,13 @@ class PageCreatorTest extends MediaWikiIntegrationTestCase {
 		$this->assertFalse( $result );
 	}
 
-	/**
-	 * @group Broken
-	 */
 	public function testPageExistsReturnsTrueForExistingPage(): void {
-		$this->markTestSkipped( 'Parsoid compatibility issue in Docker image' );
+		$title = Title::makeTitle( NS_MAIN, 'ExistsPage_' . uniqid() );
+		$this->pageCreator->createOrUpdatePage( $title, 'Some content', 'Create' );
+
+		$result = $this->pageCreator->pageExists( $title );
+
+		$this->assertTrue( $result );
 	}
 
 	/* =========================================================================
@@ -100,18 +116,24 @@ class PageCreatorTest extends MediaWikiIntegrationTestCase {
 		$this->assertNull( $result );
 	}
 
-	/**
-	 * @group Broken
-	 */
 	public function testGetPageContentReturnsContentForExistingPage(): void {
-		$this->markTestSkipped( 'Parsoid compatibility issue in Docker image' );
+		$title = Title::makeTitle( NS_MAIN, 'ReadPage_' . uniqid() );
+		$content = 'Content to be read back.';
+		$this->pageCreator->createOrUpdatePage( $title, $content, 'Create' );
+
+		$result = $this->pageCreator->getPageContent( $title );
+
+		$this->assertSame( $content, $result );
 	}
 
-	/**
-	 * @group Broken
-	 */
 	public function testGetPageContentPreservesWikitext(): void {
-		$this->markTestSkipped( 'Parsoid compatibility issue in Docker image' );
+		$title = Title::makeTitle( NS_MAIN, 'WikitextPage_' . uniqid() );
+		$wikitext = "== Section ==\n'''Bold''' and ''italic''\n[[Category:Test]]\n{{#set:|Has name=Foo}}";
+		$this->pageCreator->createOrUpdatePage( $title, $wikitext, 'Create with wikitext' );
+
+		$result = $this->pageCreator->getPageContent( $title );
+
+		$this->assertSame( $wikitext, $result );
 	}
 
 	/* =========================================================================
@@ -172,11 +194,6 @@ class PageCreatorTest extends MediaWikiIntegrationTestCase {
 	}
 
 	public function testTitleFromPageNameWithPropertyPrefix(): void {
-		// This test depends on SMW being available
-		if ( !defined( 'SMW_NS_PROPERTY' ) ) {
-			$this->markTestSkipped( 'SMW not available' );
-		}
-
 		$title = $this->pageCreator->titleFromPageName( 'Property:Has name' );
 
 		$this->assertInstanceOf( Title::class, $title );
@@ -201,11 +218,17 @@ class PageCreatorTest extends MediaWikiIntegrationTestCase {
 	 * PAGE DELETION
 	 * ========================================================================= */
 
-	/**
-	 * @group Broken
-	 */
 	public function testDeletePageRemovesExistingPage(): void {
-		$this->markTestSkipped( 'Parsoid compatibility issue in Docker image' );
+		$title = Title::makeTitle( NS_MAIN, 'DeleteMe_' . uniqid() );
+		$this->pageCreator->createOrUpdatePage( $title, 'To be deleted', 'Create' );
+		$this->assertTrue( $this->pageCreator->pageExists( $title ) );
+
+		$result = $this->pageCreator->deletePage( $title, 'Test deletion' );
+
+		$this->assertTrue( $result );
+		// Title::exists() caches; re-fetch to get fresh state
+		$freshTitle = Title::makeTitle( $title->getNamespace(), $title->getDBkey() );
+		$this->assertFalse( $this->pageCreator->pageExists( $freshTitle ) );
 	}
 
 	public function testDeletePageReturnsTrueForNonExistentPage(): void {
@@ -280,10 +303,11 @@ class PageCreatorTest extends MediaWikiIntegrationTestCase {
 	 * ERROR HANDLING
 	 * ========================================================================= */
 
-	/**
-	 * @group Broken
-	 */
 	public function testGetLastErrorReturnsNullOnSuccess(): void {
-		$this->markTestSkipped( 'Parsoid compatibility issue in Docker image' );
+		$title = Title::makeTitle( NS_MAIN, 'SuccessPage_' . uniqid() );
+
+		$this->pageCreator->createOrUpdatePage( $title, 'Content', 'Create' );
+
+		$this->assertNull( $this->pageCreator->getLastError() );
 	}
 }
