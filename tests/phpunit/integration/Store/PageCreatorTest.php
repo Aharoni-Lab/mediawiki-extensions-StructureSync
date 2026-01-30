@@ -25,27 +25,62 @@ class PageCreatorTest extends MediaWikiIntegrationTestCase {
 	 * ========================================================================= */
 
 	public function testCreateOrUpdatePageCreatesNewPage(): void {
-		$this->markTestSkipped( 'Parsoid compatibility issue in Docker image' );
+		$title = Title::makeTitle( NS_MAIN, 'NewPage_' . uniqid() );
+
+		$result = $this->pageCreator->createOrUpdatePage( $title, 'Test content', 'Test summary' );
+
+		$this->assertTrue( $result );
+		$this->assertTrue( $this->pageCreator->pageExists( $title ) );
 	}
 
 	public function testCreateOrUpdatePageWithContentVerification(): void {
-		$this->markTestSkipped( 'Parsoid compatibility issue in Docker image' );
+		$title = Title::makeTitle( NS_MAIN, 'ContentVerify_' . uniqid() );
+		$content = 'This is the expected content.';
+
+		$this->pageCreator->createOrUpdatePage( $title, $content, 'Create for verification' );
+
+		$actual = $this->pageCreator->getPageContent( $title );
+		$this->assertSame( $content, $actual );
 	}
 
 	public function testCreateOrUpdatePageUpdatesExistingPage(): void {
-		$this->markTestSkipped( 'Parsoid compatibility issue in Docker image' );
+		$title = Title::makeTitle( NS_MAIN, 'UpdatePage_' . uniqid() );
+
+		$this->pageCreator->createOrUpdatePage( $title, 'Original content', 'Create' );
+		$this->pageCreator->createOrUpdatePage( $title, 'Updated content', 'Update' );
+
+		$actual = $this->pageCreator->getPageContent( $title );
+		$this->assertSame( 'Updated content', $actual );
 	}
 
 	public function testCreateOrUpdatePageWithNoChangeReturnsTrue(): void {
-		$this->markTestSkipped( 'Parsoid compatibility issue in Docker image' );
+		$title = Title::makeTitle( NS_MAIN, 'NoChangePage_' . uniqid() );
+		$content = 'Same content both times';
+
+		$this->pageCreator->createOrUpdatePage( $title, $content, 'Create' );
+		$result = $this->pageCreator->createOrUpdatePage( $title, $content, 'No-op update' );
+
+		$this->assertTrue( $result );
 	}
 
 	public function testCreateOrUpdatePageInCategoryNamespace(): void {
-		$this->markTestSkipped( 'Parsoid compatibility issue in Docker image' );
+		$title = Title::makeTitle( NS_CATEGORY, 'TestCat_' . uniqid() );
+
+		$result = $this->pageCreator->createOrUpdatePage( $title, 'Category page content', 'Create category' );
+
+		$this->assertTrue( $result );
+		$this->assertTrue( $this->pageCreator->pageExists( $title ) );
+		$this->assertEquals( NS_CATEGORY, $title->getNamespace() );
 	}
 
 	public function testCreateOrUpdatePageInTemplateNamespace(): void {
-		$this->markTestSkipped( 'Parsoid compatibility issue in Docker image' );
+		$title = Title::makeTitle( NS_TEMPLATE, 'TestTpl_' . uniqid() );
+
+		$result = $this->pageCreator->createOrUpdatePage( $title, 'Template page content', 'Create template' );
+
+		$this->assertTrue( $result );
+		$this->assertTrue( $this->pageCreator->pageExists( $title ) );
+		$this->assertEquals( NS_TEMPLATE, $title->getNamespace() );
 	}
 
 	/* =========================================================================
@@ -61,7 +96,12 @@ class PageCreatorTest extends MediaWikiIntegrationTestCase {
 	}
 
 	public function testPageExistsReturnsTrueForExistingPage(): void {
-		$this->markTestSkipped( 'Parsoid compatibility issue in Docker image' );
+		$title = Title::makeTitle( NS_MAIN, 'ExistsPage_' . uniqid() );
+		$this->pageCreator->createOrUpdatePage( $title, 'Some content', 'Create' );
+
+		$result = $this->pageCreator->pageExists( $title );
+
+		$this->assertTrue( $result );
 	}
 
 	/* =========================================================================
@@ -77,11 +117,23 @@ class PageCreatorTest extends MediaWikiIntegrationTestCase {
 	}
 
 	public function testGetPageContentReturnsContentForExistingPage(): void {
-		$this->markTestSkipped( 'Parsoid compatibility issue in Docker image' );
+		$title = Title::makeTitle( NS_MAIN, 'ReadPage_' . uniqid() );
+		$content = 'Content to be read back.';
+		$this->pageCreator->createOrUpdatePage( $title, $content, 'Create' );
+
+		$result = $this->pageCreator->getPageContent( $title );
+
+		$this->assertSame( $content, $result );
 	}
 
 	public function testGetPageContentPreservesWikitext(): void {
-		$this->markTestSkipped( 'Parsoid compatibility issue in Docker image' );
+		$title = Title::makeTitle( NS_MAIN, 'WikitextPage_' . uniqid() );
+		$wikitext = "== Section ==\n'''Bold''' and ''italic''\n[[Category:Test]]\n{{#set:|Has name=Foo}}";
+		$this->pageCreator->createOrUpdatePage( $title, $wikitext, 'Create with wikitext' );
+
+		$result = $this->pageCreator->getPageContent( $title );
+
+		$this->assertSame( $wikitext, $result );
 	}
 
 	/* =========================================================================
@@ -167,7 +219,16 @@ class PageCreatorTest extends MediaWikiIntegrationTestCase {
 	 * ========================================================================= */
 
 	public function testDeletePageRemovesExistingPage(): void {
-		$this->markTestSkipped( 'Parsoid compatibility issue in Docker image' );
+		$title = Title::makeTitle( NS_MAIN, 'DeleteMe_' . uniqid() );
+		$this->pageCreator->createOrUpdatePage( $title, 'To be deleted', 'Create' );
+		$this->assertTrue( $this->pageCreator->pageExists( $title ) );
+
+		$result = $this->pageCreator->deletePage( $title, 'Test deletion' );
+
+		$this->assertTrue( $result );
+		// Title::exists() caches; re-fetch to get fresh state
+		$freshTitle = Title::makeTitle( $title->getNamespace(), $title->getDBkey() );
+		$this->assertFalse( $this->pageCreator->pageExists( $freshTitle ) );
 	}
 
 	public function testDeletePageReturnsTrueForNonExistentPage(): void {
@@ -243,6 +304,10 @@ class PageCreatorTest extends MediaWikiIntegrationTestCase {
 	 * ========================================================================= */
 
 	public function testGetLastErrorReturnsNullOnSuccess(): void {
-		$this->markTestSkipped( 'Parsoid compatibility issue in Docker image' );
+		$title = Title::makeTitle( NS_MAIN, 'SuccessPage_' . uniqid() );
+
+		$this->pageCreator->createOrUpdatePage( $title, 'Content', 'Create' );
+
+		$this->assertNull( $this->pageCreator->getLastError() );
 	}
 }
