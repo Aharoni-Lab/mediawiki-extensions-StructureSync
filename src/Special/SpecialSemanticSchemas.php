@@ -482,31 +482,7 @@ class SpecialSemanticSchemas extends SpecialPage {
 
 			// Progress display
 			Html::rawElement( 'div', [ 'id' => 'ss-progress' ],
-				Html::rawElement( 'div', [ 'id' => 'ss-layer0', 'class' => 'ss-layer' ],
-					Html::rawElement( 'span', [ 'class' => 'ss-layer-status' ], '○' ) . ' ' .
-					Html::element( 'span', [ 'class' => 'ss-layer-name' ], 'Layer 0: Templates' ) .
-					Html::element( 'span', [ 'class' => 'ss-layer-info' ], '' )
-				) .
-				Html::rawElement( 'div', [ 'id' => 'ss-layer1', 'class' => 'ss-layer' ],
-					Html::rawElement( 'span', [ 'class' => 'ss-layer-status' ], '○' ) . ' ' .
-					Html::element( 'span', [ 'class' => 'ss-layer-name' ], 'Layer 1: Property Types' ) .
-					Html::element( 'span', [ 'class' => 'ss-layer-info' ], '' )
-				) .
-				Html::rawElement( 'div', [ 'id' => 'ss-layer2', 'class' => 'ss-layer' ],
-					Html::rawElement( 'span', [ 'class' => 'ss-layer-status' ], '○' ) . ' ' .
-					Html::element( 'span', [ 'class' => 'ss-layer-name' ], 'Layer 2: Property Annotations' ) .
-					Html::element( 'span', [ 'class' => 'ss-layer-info' ], '' )
-				) .
-				Html::rawElement( 'div', [ 'id' => 'ss-layer3', 'class' => 'ss-layer' ],
-					Html::rawElement( 'span', [ 'class' => 'ss-layer-status' ], '○' ) . ' ' .
-					Html::element( 'span', [ 'class' => 'ss-layer-name' ], 'Layer 3: Subobjects' ) .
-					Html::element( 'span', [ 'class' => 'ss-layer-info' ], '' )
-				) .
-				Html::rawElement( 'div', [ 'id' => 'ss-layer4', 'class' => 'ss-layer' ],
-					Html::rawElement( 'span', [ 'class' => 'ss-layer-status' ], '○' ) . ' ' .
-					Html::element( 'span', [ 'class' => 'ss-layer-name' ], 'Layer 4: Categories' ) .
-					Html::element( 'span', [ 'class' => 'ss-layer-info' ], '' )
-				) .
+				$this->renderLayerProgressItems() .
 				Html::rawElement( 'div', [ 'id' => 'ss-jobs' ],
 					Html::element( 'span', [], 'Waiting for SMW jobs: ' ) .
 					Html::element( 'span', [ 'id' => 'ss-job-count' ], '0' )
@@ -542,6 +518,31 @@ class SpecialSemanticSchemas extends SpecialPage {
 				'data-api-url' => $apiUrl,
 			] )
 		);
+	}
+
+	/**
+	 * Render the layer progress items for the automated installer.
+	 *
+	 * @return string HTML
+	 */
+	private function renderLayerProgressItems(): string {
+		$layers = [
+			[ 'ss-layer0', 'Layer 0: Templates' ],
+			[ 'ss-layer1', 'Layer 1: Property Types' ],
+			[ 'ss-layer2', 'Layer 2: Property Annotations' ],
+			[ 'ss-layer3', 'Layer 3: Subobjects' ],
+			[ 'ss-layer4', 'Layer 4: Categories' ],
+		];
+
+		$html = '';
+		foreach ( $layers as [ $id, $label ] ) {
+			$html .= Html::rawElement( 'div', [ 'id' => $id, 'class' => 'ss-layer' ],
+				Html::rawElement( 'span', [ 'class' => 'ss-layer-status' ], '○' ) . ' ' .
+				Html::element( 'span', [ 'class' => 'ss-layer-name' ], $label ) .
+				Html::element( 'span', [ 'class' => 'ss-layer-info' ], '' )
+			);
+		}
+		return $html;
 	}
 
 	/**

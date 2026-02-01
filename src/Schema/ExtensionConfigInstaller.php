@@ -143,45 +143,10 @@ class ExtensionConfigInstaller {
 		$categories = $schema['categories'] ?? [];
 		$subobjects = $schema['subobjects'] ?? [];
 
-		// Check templates
-		foreach ( array_keys( $templates ) as $name ) {
-			$title = $this->pageCreator->makeTitle( $name, NS_TEMPLATE );
-			if ( $title && $this->pageCreator->pageExists( $title ) ) {
-				$result['would_update']['templates'][] = $name;
-			} else {
-				$result['would_create']['templates'][] = $name;
-			}
-		}
-
-		// Check properties
-		foreach ( array_keys( $properties ) as $name ) {
-			$title = $this->pageCreator->makeTitle( $name, SMW_NS_PROPERTY );
-			if ( $title && $this->pageCreator->pageExists( $title ) ) {
-				$result['would_update']['properties'][] = $name;
-			} else {
-				$result['would_create']['properties'][] = $name;
-			}
-		}
-
-		// Check subobjects
-		foreach ( array_keys( $subobjects ) as $name ) {
-			$title = $this->pageCreator->makeTitle( $name, NS_SUBOBJECT );
-			if ( $title && $this->pageCreator->pageExists( $title ) ) {
-				$result['would_update']['subobjects'][] = $name;
-			} else {
-				$result['would_create']['subobjects'][] = $name;
-			}
-		}
-
-		// Check categories (also need to check templates and forms)
-		foreach ( array_keys( $categories ) as $name ) {
-			$categoryTitle = $this->pageCreator->makeTitle( $name, NS_CATEGORY );
-			if ( $categoryTitle && $this->pageCreator->pageExists( $categoryTitle ) ) {
-				$result['would_update']['categories'][] = $name;
-			} else {
-				$result['would_create']['categories'][] = $name;
-			}
-		}
+		$this->previewEntities( array_keys( $templates ), NS_TEMPLATE, 'templates', $result );
+		$this->previewEntities( array_keys( $properties ), SMW_NS_PROPERTY, 'properties', $result );
+		$this->previewEntities( array_keys( $subobjects ), NS_SUBOBJECT, 'subobjects', $result );
+		$this->previewEntities( array_keys( $categories ), NS_CATEGORY, 'categories', $result );
 
 		return $result;
 	}
@@ -196,37 +161,12 @@ class ExtensionConfigInstaller {
 	 * @return array
 	 */
 	public function applyCategoriesOnly( array $schema ): array {
-		$validation = $this->validator->validateSchemaWithSeverity( $schema );
-
-		$result = [
-			'errors' => $validation['errors'],
-			'warnings' => $validation['warnings'],
-			'created' => [ 'categories' => [] ],
-			'updated' => [ 'categories' => [] ],
-			'failed' => [ 'categories' => [] ],
-		];
-
-		if ( $validation['errors'] ) {
-			return $result;
-		}
-
-		$categories = $schema['categories'] ?? [];
-
-		foreach ( $categories as $name => $data ) {
-			$categoryTitle = $this->pageCreator->makeTitle( $name, NS_CATEGORY );
-			$existed = $categoryTitle && $this->pageCreator->pageExists( $categoryTitle );
-
-			$model = new CategoryModel( $name, $data ?? [] );
-			$ok = $this->categoryStore->writeCategory( $model );
-
-			if ( $ok ) {
-				$result[$existed ? 'updated' : 'created']['categories'][] = $name;
-			} else {
-				$result['failed']['categories'][] = $name;
-			}
-		}
-
-		return $result;
+		return $this->applyValidatedEntities(
+			$schema, 'categories', NS_CATEGORY, 'categories',
+			fn ( string $name, array $data ) => $this->categoryStore->writeCategory(
+				new CategoryModel( $name, $data )
+			)
+		);
 	}
 
 	/**
@@ -267,6 +207,77 @@ class ExtensionConfigInstaller {
 	 */
 	public function areCategoriesInstalled( string $filePath ): bool {
 		return $this->areEntitiesInstalled( $filePath, 'categories', NS_CATEGORY );
+	}
+
+	/**
+	 * Classify entity names as would_create or would_update based on page existence.
+	 *
+	 * @param string[] $names Entity names to check
+	 * @param int $namespace MediaWiki namespace constant
+	 * @param string $key Result key (e.g. 'templates', 'properties')
+	 * @param array &$result Preview result array to populate
+	 */
+	private function previewEntities( array $names, int $namespace, string $key, array &$result ): void {
+		foreach ( $names as $name ) {
+			$title = $this->pageCreator->makeTitle( $name, $namespace );
+			if ( $title && $this->pageCreator->pageExists( $title ) ) {
+				$result['would_update'][$key][] = $name;
+			} else {
+				$result['would_create'][$key][] = $name;
+			}
+		}
+	}
+
+	/**
+	 * Validate schema and apply entities using a write callable.
+	 *
+	 * Handles the common pattern: validate → init result → iterate entities →
+	 * check existence → call writer → classify as created/updated/failed.
+	 *
+	 * @param array $schema Full schema array
+	 * @param string $entityKey Schema key (e.g. 'properties', 'categories')
+	 * @param int $namespace MediaWiki namespace constant
+	 * @param string $resultKey Result array key (e.g. 'properties', 'categories')
+	 * @param callable $writeEntity fn(string $name, array $data): bool
+	 * @return array
+	 */
+	private function applyValidatedEntities(
+		array $schema,
+		string $entityKey,
+		int $namespace,
+		string $resultKey,
+		callable $writeEntity
+	): array {
+		$validation = $this->validator->validateSchemaWithSeverity( $schema );
+
+		$result = [
+			'errors' => $validation['errors'],
+			'warnings' => $validation['warnings'],
+			'created' => [ $resultKey => [] ],
+			'updated' => [ $resultKey => [] ],
+			'failed' => [ $resultKey => [] ],
+		];
+
+		if ( $validation['errors'] ) {
+			return $result;
+		}
+
+		$entities = $schema[$entityKey] ?? [];
+
+		foreach ( $entities as $name => $data ) {
+			$title = $this->pageCreator->makeTitle( $name, $namespace );
+			$existed = $title && $this->pageCreator->pageExists( $title );
+
+			$ok = $writeEntity( $name, $data ?? [] );
+
+			if ( $ok ) {
+				$result[$existed ? 'updated' : 'created'][$resultKey][] = $name;
+			} else {
+				$result['failed'][$resultKey][] = $name;
+			}
+		}
+
+		return $result;
 	}
 
 	/**
@@ -363,37 +374,12 @@ class ExtensionConfigInstaller {
 	 * @return array
 	 */
 	public function applyPropertiesTypeOnly( array $schema ): array {
-		$validation = $this->validator->validateSchemaWithSeverity( $schema );
-
-		$result = [
-			'errors' => $validation['errors'],
-			'warnings' => $validation['warnings'],
-			'created' => [ 'properties' => [] ],
-			'updated' => [ 'properties' => [] ],
-			'failed' => [ 'properties' => [] ],
-		];
-
-		if ( $validation['errors'] ) {
-			return $result;
-		}
-
-		$properties = $schema['properties'] ?? [];
-
-		foreach ( $properties as $name => $data ) {
-			$title = $this->pageCreator->makeTitle( $name, SMW_NS_PROPERTY );
-			$existed = $title && $this->pageCreator->pageExists( $title );
-
-			$model = new PropertyModel( $name, $data ?? [] );
-			$ok = $this->propertyStore->writePropertyTypeOnly( $model );
-
-			if ( $ok ) {
-				$result[$existed ? 'updated' : 'created']['properties'][] = $name;
-			} else {
-				$result['failed']['properties'][] = $name;
-			}
-		}
-
-		return $result;
+		return $this->applyValidatedEntities(
+			$schema, 'properties', SMW_NS_PROPERTY, 'properties',
+			fn ( string $name, array $data ) => $this->propertyStore->writePropertyTypeOnly(
+				new PropertyModel( $name, $data )
+			)
+		);
 	}
 
 	/**
@@ -404,37 +390,12 @@ class ExtensionConfigInstaller {
 	 * @return array
 	 */
 	public function applyPropertiesFull( array $schema ): array {
-		$validation = $this->validator->validateSchemaWithSeverity( $schema );
-
-		$result = [
-			'errors' => $validation['errors'],
-			'warnings' => $validation['warnings'],
-			'created' => [ 'properties' => [] ],
-			'updated' => [ 'properties' => [] ],
-			'failed' => [ 'properties' => [] ],
-		];
-
-		if ( $validation['errors'] ) {
-			return $result;
-		}
-
-		$properties = $schema['properties'] ?? [];
-
-		foreach ( $properties as $name => $data ) {
-			$title = $this->pageCreator->makeTitle( $name, SMW_NS_PROPERTY );
-			$existed = $title && $this->pageCreator->pageExists( $title );
-
-			$model = new PropertyModel( $name, $data ?? [] );
-			$ok = $this->propertyStore->writeProperty( $model );
-
-			if ( $ok ) {
-				$result[$existed ? 'updated' : 'created']['properties'][] = $name;
-			} else {
-				$result['failed']['properties'][] = $name;
-			}
-		}
-
-		return $result;
+		return $this->applyValidatedEntities(
+			$schema, 'properties', SMW_NS_PROPERTY, 'properties',
+			fn ( string $name, array $data ) => $this->propertyStore->writeProperty(
+				new PropertyModel( $name, $data )
+			)
+		);
 	}
 
 	/**
@@ -444,37 +405,12 @@ class ExtensionConfigInstaller {
 	 * @return array
 	 */
 	public function applySubobjectsOnly( array $schema ): array {
-		$validation = $this->validator->validateSchemaWithSeverity( $schema );
-
-		$result = [
-			'errors' => $validation['errors'],
-			'warnings' => $validation['warnings'],
-			'created' => [ 'subobjects' => [] ],
-			'updated' => [ 'subobjects' => [] ],
-			'failed' => [ 'subobjects' => [] ],
-		];
-
-		if ( $validation['errors'] ) {
-			return $result;
-		}
-
-		$subobjects = $schema['subobjects'] ?? [];
-
-		foreach ( $subobjects as $name => $data ) {
-			$title = $this->pageCreator->makeTitle( $name, NS_SUBOBJECT );
-			$existed = $title && $this->pageCreator->pageExists( $title );
-
-			$model = new SubobjectModel( $name, $data ?? [] );
-			$ok = $this->subobjectStore->writeSubobject( $model );
-
-			if ( $ok ) {
-				$result[$existed ? 'updated' : 'created']['subobjects'][] = $name;
-			} else {
-				$result['failed']['subobjects'][] = $name;
-			}
-		}
-
-		return $result;
+		return $this->applyValidatedEntities(
+			$schema, 'subobjects', NS_SUBOBJECT, 'subobjects',
+			fn ( string $name, array $data ) => $this->subobjectStore->writeSubobject(
+				new SubobjectModel( $name, $data )
+			)
+		);
 	}
 
 	/**
