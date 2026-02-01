@@ -129,7 +129,8 @@
       "datatype": "Text",
       "label": "Description",
       "description": "Explains the purpose of this category, property, or subobject.",
-      "allowsMultipleValues": false
+      "allowsMultipleValues": false,
+      "inputType": "textarea"
     },
     "Has target namespace": {
       "datatype": "Text",
@@ -188,7 +189,8 @@
         "sidebox",
         "sections"
       ],
-      "allowsMultipleValues": false
+      "allowsMultipleValues": false,
+      "inputType": "radiobutton"
     },
     "Has display section name": {
       "datatype": "Text",
@@ -272,7 +274,8 @@
         "show",
         "hide"
       ],
-      "allowsMultipleValues": false
+      "allowsMultipleValues": false,
+      "inputType": "radiobutton"
     },
     "Has subobject type": {
       "datatype": "Page",
