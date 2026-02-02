@@ -41,11 +41,11 @@ Plans:
   3. When a subobject is both required and optional across inheritance, it is promoted to required without errors
   4. SchemaValidator warns (not errors) when property appears in both required and optional
   5. Existing schemas without conflicts continue working identically
-**Plans**: TBD
+**Plans**: 2 plans
 
 Plans:
-- [ ] 03-01: TBD
-- [ ] 03-02: TBD
+- [ ] 03-01-PLAN.md -- Create feature branch, fix model constructor crash points, update tests
+- [ ] 03-02-PLAN.md -- Change SchemaValidator overlap from error to warning, update OntologyInspector
 
 #### Phase 4: Conditional Templates
 **Goal**: Wrap semantic template `#set` calls in `#if` conditions to prevent empty value overwrites in multi-category pages
@@ -150,7 +150,7 @@ Phases execute in numeric order: 3 → 4 → 5 → 6 → 7 → 8 → 9
 |-------|-----------|----------------|--------|-----------|
 | 1. Property Display Template | v0.1.2 | 2/2 | Complete | 2026-01-19 |
 | 2. Smart Fallback Logic | v0.1.2 | 1/1 | Complete | 2026-01-19 |
-| 3. Feature Branch + Bug Fix | v0.2.0 | 0/TBD | Not started | - |
+| 3. Feature Branch + Bug Fix | v0.2.0 | 0/2 | Not started | - |
 | 4. Conditional Templates | v0.2.0 | 0/TBD | Not started | - |
 | 5. Property Resolution | v0.2.0 | 0/TBD | Not started | - |
 | 6. Composite Form Generation | v0.2.0 | 0/TBD | Not started | - |
