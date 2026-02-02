@@ -4,9 +4,6 @@ namespace MediaWiki\Extension\SemanticSchemas\Generator;
 
 use MediaWiki\Extension\SemanticSchemas\Schema\CategoryModel;
 use MediaWiki\Extension\SemanticSchemas\Schema\ResolvedPropertySet;
-use MediaWiki\Extension\SemanticSchemas\Store\PageCreator;
-use MediaWiki\Extension\SemanticSchemas\Store\WikiPropertyStore;
-use MediaWiki\Extension\SemanticSchemas\Store\WikiSubobjectStore;
 
 /**
  * CompositeFormGenerator
@@ -160,7 +157,8 @@ class CompositeFormGenerator extends FormGenerator {
 		$lines = [];
 
 		// Template opening
-		$lines[] = '{{{for template|' . $this->s( $categoryName ) . '|label=' . $this->s( $categoryName ) . ' Properties}}}';
+		$lines[] = '{{{for template|' . $this->s( $categoryName ) . '|label='
+			. $this->s( $categoryName ) . ' Properties}}}';
 		$lines[] = '';
 
 		// Property fields

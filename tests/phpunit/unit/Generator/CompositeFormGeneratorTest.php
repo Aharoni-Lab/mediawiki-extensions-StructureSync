@@ -6,7 +6,6 @@ use MediaWiki\Extension\SemanticSchemas\Generator\CompositeFormGenerator;
 use MediaWiki\Extension\SemanticSchemas\Generator\PropertyInputMapper;
 use MediaWiki\Extension\SemanticSchemas\Schema\PropertyModel;
 use MediaWiki\Extension\SemanticSchemas\Schema\ResolvedPropertySet;
-use MediaWiki\Extension\SemanticSchemas\Schema\SubobjectModel;
 use MediaWiki\Extension\SemanticSchemas\Store\PageCreator;
 use MediaWiki\Extension\SemanticSchemas\Store\WikiPropertyStore;
 use MediaWiki\Extension\SemanticSchemas\Store\WikiSubobjectStore;
@@ -117,7 +116,11 @@ class CompositeFormGeneratorTest extends TestCase {
 
 		// Employee section should NOT have shared property
 		$employeeSection = substr( $result, $employeeStart );
-		$this->assertStringNotContainsString( 'Has name', $employeeSection, 'Shared property should not appear in second section' );
+		$this->assertStringNotContainsString(
+			'Has name',
+			$employeeSection,
+			'Shared property should not appear in second section'
+		);
 		$this->assertStringContainsString( 'Has employee ID', $employeeSection );
 	}
 
@@ -150,7 +153,7 @@ class CompositeFormGeneratorTest extends TestCase {
 		$this->assertMatchesRegularExpression(
 			'/Has name.*mandatory=true/s',
 			$result,
-			'Required property should have mandatory=true parameter'
+			'Required property should have mandatory=true'
 		);
 	}
 
