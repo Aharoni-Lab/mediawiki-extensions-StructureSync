@@ -5,13 +5,13 @@
 See: .planning/PROJECT.md (updated 2026-02-02)
 
 **Core value:** Schema definitions are the single source of truth; all wiki artifacts are generated from schemas
-**Current focus:** Phase 4 - Conditional Templates (Phase 3 complete)
+**Current focus:** Phase 5 - Property Resolution (Phase 4 complete)
 
 ## Current Position
 
 Phase: 4 of 9 (Conditional Templates)
-Plan: 1 of 2 in current phase
-Status: In progress
+Plan: 1 of 1 in current phase
+Status: Phase complete
 Last activity: 2026-02-02 — Completed 04-01-PLAN.md (Conditional Template Guards)
 
 Progress: [████░░░░░░] 46% (6 of 13+ plans across all phases)
@@ -30,7 +30,7 @@ Progress: [████░░░░░░] 46% (6 of 13+ plans across all phases
 | 1. Property Display Template | 2/2 | Complete | v0.1.2 |
 | 2. Smart Fallback Logic | 1/1 | Complete | v0.1.2 |
 | 3. Feature Branch + Bug Fix | 2/2 | Complete | 2 min |
-| 4. Conditional Templates | 1/2 | In progress | 2 min |
+| 4. Conditional Templates | 1/1 | Complete | 2 min |
 
 **Recent Trend:**
 - v0.2.0 Plan 04-01 completed in 2 minutes (conditional template guards)
@@ -64,10 +64,10 @@ None yet.
 
 ### Blockers/Concerns
 
-None — Phase 4-01 complete, ready for 04-02.
+None — Phase 4 complete, ready for Phase 5.
 
 **Known risks from research:**
-- Property collision without conditional `#set` (RESOLVED in Phase 4-01)
+- Property collision without conditional `#set` (RESOLVED in Phase 4)
 - StateManager hash conflicts with multi-template pages (addressed in Phase 9)
 - PageForms one-category-per-page philosophy (requires primary category strategy in Phase 8)
 

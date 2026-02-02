@@ -22,9 +22,9 @@ Requirements for multi-category page creation milestone. Each maps to roadmap ph
 
 ### Conditional Templates
 
-- [ ] **TMPL-01**: All semantic templates wrap `#set` calls in `#if` conditions to prevent empty value overwrites
-- [ ] **TMPL-02**: Existing single-category templates continue working after conditional `#set` change
-- [ ] **TMPL-03**: Multi-value properties use `+sep` parameter instead of manual separators inside `#if` blocks
+- [x] **TMPL-01**: All semantic templates wrap `#set` calls in `#if` conditions to prevent empty value overwrites
+- [x] **TMPL-02**: Existing single-category templates continue working after conditional `#set` change
+- [x] **TMPL-03**: Multi-value properties use `+sep` parameter instead of manual separators inside `#if` blocks
 
 ### Property Resolution
 
@@ -109,9 +109,9 @@ Which phases cover which requirements. Updated during roadmap creation.
 | FIX-04 | Phase 3 | Complete |
 | FIX-05 | Phase 3 | Complete |
 | FIX-06 | Phase 3 | Complete |
-| TMPL-01 | Phase 4 | Pending |
-| TMPL-02 | Phase 4 | Pending |
-| TMPL-03 | Phase 4 | Pending |
+| TMPL-01 | Phase 4 | Complete |
+| TMPL-02 | Phase 4 | Complete |
+| TMPL-03 | Phase 4 | Complete |
 | RESO-01 | Phase 5 | Pending |
 | RESO-02 | Phase 5 | Pending |
 | RESO-03 | Phase 5 | Pending |

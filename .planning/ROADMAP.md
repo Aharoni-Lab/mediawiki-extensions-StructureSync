@@ -59,7 +59,7 @@ Plans:
 **Plans**: 1 plan
 
 Plans:
-- [ ] 04-01-PLAN.md -- Add #if guards and +sep to TemplateGenerator output, update tests
+- [x] 04-01-PLAN.md -- Add #if guards and +sep to TemplateGenerator output, update tests
 
 #### Phase 5: Property Resolution
 **Goal**: Multi-category property resolver identifies shared properties and resolves conflicts across selected categories
@@ -151,7 +151,7 @@ Phases execute in numeric order: 3 -> 4 -> 5 -> 6 -> 7 -> 8 -> 9
 | 1. Property Display Template | v0.1.2 | 2/2 | Complete | 2026-01-19 |
 | 2. Smart Fallback Logic | v0.1.2 | 1/1 | Complete | 2026-01-19 |
 | 3. Feature Branch + Bug Fix | v0.2.0 | 2/2 | Complete | 2026-02-02 |
-| 4. Conditional Templates | v0.2.0 | 0/1 | Not started | - |
+| 4. Conditional Templates | v0.2.0 | 1/1 | Complete | 2026-02-02 |
 | 5. Property Resolution | v0.2.0 | 0/TBD | Not started | - |
 | 6. Composite Form Generation | v0.2.0 | 0/TBD | Not started | - |
 | 7. API Endpoint | v0.2.0 | 0/TBD | Not started | - |
