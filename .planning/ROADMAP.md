@@ -87,11 +87,10 @@ Plans:
   3. Each template section has clear label identifying which category it represents
   4. Generated form includes `[[Category:X]]` wikilinks for all selected categories
   5. Composite form is saved as wiki Form: page and accessible via Special:FormEdit
-**Plans**: TBD
+**Plans**: 1 plan
 
 Plans:
-- [ ] 06-01: TBD
-- [ ] 06-02: TBD
+- [ ] 06-01-PLAN.md -- CompositeFormGenerator with TDD: refactor FormGenerator methods, create generator with shared property deduplication, comprehensive tests
 
 #### Phase 7: API Endpoint
 **Goal**: API endpoint providing multi-category property resolution data for UI preview
@@ -152,7 +151,7 @@ Phases execute in numeric order: 3 -> 4 -> 5 -> 6 -> 7 -> 8 -> 9
 | 3. Feature Branch + Bug Fix | v0.2.0 | 2/2 | Complete | 2026-02-02 |
 | 4. Conditional Templates | v0.2.0 | 1/1 | Complete | 2026-02-02 |
 | 5. Property Resolution | v0.2.0 | 1/1 | Complete | 2026-02-02 |
-| 6. Composite Form Generation | v0.2.0 | 0/TBD | Not started | - |
+| 6. Composite Form Generation | v0.2.0 | 0/1 | Not started | - |
 | 7. API Endpoint | v0.2.0 | 0/TBD | Not started | - |
 | 8. Create Page UI | v0.2.0 | 0/TBD | Not started | - |
 | 9. State Management Refactor | v0.2.0 | 0/TBD | Not started | - |
