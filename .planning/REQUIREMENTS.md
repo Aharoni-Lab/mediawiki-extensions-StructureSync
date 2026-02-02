@@ -45,9 +45,9 @@ Requirements for multi-category page creation milestone. Each maps to roadmap ph
 
 ### API Endpoint
 
-- [ ] **API-01**: API endpoint accepts multiple category names and returns resolved/deduplicated property data
-- [ ] **API-02**: API response includes shared properties, category-specific properties, and any conflicts
-- [ ] **API-03**: API is registered in extension.json and follows existing ApiBase pattern
+- [x] **API-01**: API endpoint accepts multiple category names and returns resolved/deduplicated property data
+- [x] **API-02**: API response includes shared properties, category-specific properties, and any conflicts
+- [x] **API-03**: API is registered in extension.json and follows existing ApiBase pattern
 
 ### Create Page UI
 
@@ -123,9 +123,9 @@ Which phases cover which requirements. Updated during roadmap creation.
 | FORM-03 | Phase 6 | Complete |
 | FORM-04 | Phase 6 | Complete |
 | FORM-05 | Phase 6 | Complete |
-| API-01 | Phase 7 | Pending |
-| API-02 | Phase 7 | Pending |
-| API-03 | Phase 7 | Pending |
+| API-01 | Phase 7 | Complete |
+| API-02 | Phase 7 | Complete |
+| API-03 | Phase 7 | Complete |
 | UI-01 | Phase 8 | Pending |
 | UI-02 | Phase 8 | Pending |
 | UI-03 | Phase 8 | Pending |

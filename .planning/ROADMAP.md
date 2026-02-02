@@ -104,7 +104,7 @@ Plans:
 **Plans**: 1 plan
 
 Plans:
-- [ ] 07-01-PLAN.md -- Create ApiSemanticSchemasMultiCategory endpoint with MultiCategoryResolver delegation, registration, i18n, and unit tests
+- [x] 07-01-PLAN.md -- Create ApiSemanticSchemasMultiCategory endpoint with MultiCategoryResolver delegation, registration, i18n, and unit tests
 
 #### Phase 8: Create Page UI
 **Goal**: New Special page (Special:CreateSemanticPage) with hierarchy tree selection and live property preview
@@ -152,6 +152,6 @@ Phases execute in numeric order: 3 -> 4 -> 5 -> 6 -> 7 -> 8 -> 9
 | 4. Conditional Templates | v0.2.0 | 1/1 | Complete | 2026-02-02 |
 | 5. Property Resolution | v0.2.0 | 1/1 | Complete | 2026-02-02 |
 | 6. Composite Form Generation | v0.2.0 | 1/1 | Complete | 2026-02-02 |
-| 7. API Endpoint | v0.2.0 | 0/1 | Not started | - |
+| 7. API Endpoint | v0.2.0 | 1/1 | Complete | 2026-02-02 |
 | 8. Create Page UI | v0.2.0 | 0/TBD | Not started | - |
 | 9. State Management Refactor | v0.2.0 | 0/TBD | Not started | - |
