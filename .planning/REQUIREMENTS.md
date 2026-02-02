@@ -37,11 +37,11 @@ Requirements for multi-category page creation milestone. Each maps to roadmap ph
 
 ### Composite Form Generation
 
-- [ ] **FORM-01**: CompositeFormGenerator produces a single PageForms form with multiple `{{{for template}}}` blocks
-- [ ] **FORM-02**: Shared properties appear once in the first template section; conditional `#set` handles storage in other templates
-- [ ] **FORM-03**: Each template section has a label identifying the category
-- [ ] **FORM-04**: All selected categories are assigned on page save via `[[Category:X]]` wikilinks
-- [ ] **FORM-05**: Generated composite form is saved as a wiki Form: page
+- [x] **FORM-01**: CompositeFormGenerator produces a single PageForms form with multiple `{{{for template}}}` blocks
+- [x] **FORM-02**: Shared properties appear once in the first template section; conditional `#set` handles storage in other templates
+- [x] **FORM-03**: Each template section has a label identifying the category
+- [x] **FORM-04**: All selected categories are assigned on page save via `[[Category:X]]` wikilinks
+- [x] **FORM-05**: Generated composite form is saved as a wiki Form: page
 
 ### API Endpoint
 
@@ -118,11 +118,11 @@ Which phases cover which requirements. Updated during roadmap creation.
 | RESO-04 | Phase 5 | Complete |
 | RESO-05 | Phase 5 | Complete |
 | RESO-06 | Phase 5 | Complete |
-| FORM-01 | Phase 6 | Pending |
-| FORM-02 | Phase 6 | Pending |
-| FORM-03 | Phase 6 | Pending |
-| FORM-04 | Phase 6 | Pending |
-| FORM-05 | Phase 6 | Pending |
+| FORM-01 | Phase 6 | Complete |
+| FORM-02 | Phase 6 | Complete |
+| FORM-03 | Phase 6 | Complete |
+| FORM-04 | Phase 6 | Complete |
+| FORM-05 | Phase 6 | Complete |
 | API-01 | Phase 7 | Pending |
 | API-02 | Phase 7 | Pending |
 | API-03 | Phase 7 | Pending |
