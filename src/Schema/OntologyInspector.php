@@ -146,8 +146,9 @@ class OntologyInspector {
 		$schema = $this->buildSchemaArray();
 		$validator = new SchemaValidator();
 
-		$errors = $validator->validateSchema( $schema );
-		$warnings = $validator->generateWarnings( $schema );
+		$validationResult = $validator->validateSchemaWithSeverity( $schema );
+		$errors = $validationResult['errors'];
+		$warnings = $validationResult['warnings'];
 		$modified = [];
 
 		$stored = $this->stateManager->getPageHashes();
