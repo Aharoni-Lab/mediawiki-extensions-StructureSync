@@ -2,21 +2,21 @@
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-01-19)
+See: .planning/PROJECT.md (updated 2026-02-02)
 
-**Core value:** Page-type property values render as clickable wiki links
-**Current focus:** Milestone v0.1.2 complete — ready for next milestone
+**Core value:** Schema definitions are the single source of truth; all wiki artifacts are generated from schemas
+**Current focus:** Milestone v0.2.0 — Multi-Category Page Creation
 
 ## Current Position
 
-**Phase:** N/A — between milestones
-**Plan:** N/A
-**Status:** Ready to plan next milestone
-**Last activity:** 2026-01-19 — v0.1.2 milestone complete
+**Phase:** Not started (defining requirements)
+**Plan:** —
+**Status:** Defining requirements
+**Last activity:** 2026-02-02 — Milestone v0.2.0 started
 
 ```
-Progress: [==========] 100%
-v0.1.2:   [==========] Complete (2 phases, 3 plans)
+Progress: [          ] 0%
+v0.2.0:   Not started
 ```
 
 ## Milestone History
@@ -33,13 +33,18 @@ See `.planning/MILESTONES.md` for full details.
 
 See PROJECT.md Key Decisions table for full list with outcomes.
 
+### Architecture Decisions (v0.2.0)
+
+- Multiple template calls per page (one per category)
+- Conditional `#set` prevents empty value overwrites
+- Shared properties shown once in first template section
+- PageForms composite form approach (generate Form: page, redirect to FormEdit)
+- Existing per-category forms continue working — additive entry point
+
 ### Implementation Notes
 
-- Template content: `<includeonly>{{#if:{{{value|}}}|{{#arraymap:{{{value|}}}|,|@@item@@|[[:@@item@@]]|,&#32;}}|}}</includeonly>`
-- Files modified: `resources/extension-config.json`, `src/Schema/PropertyModel.php`, `src/Generator/DisplayStubGenerator.php`
-- **Pattern:** Use leading colon `[[:PageName]]` for namespace-safe wikilinks
-- **Pattern:** Three-tier fallback: custom template -> datatype-specific -> default
-- **Pattern:** Value transformation for namespace-aware properties at generation time
+- v0.1.2 patterns: leading colon `[[:PageName]]`, three-tier fallback, generation-time resolution
+- Key files: TemplateGenerator.php, FormGenerator.php, SpecialSemanticSchemas.php, InheritanceResolver.php
 
 ### Blockers
 
@@ -48,12 +53,13 @@ None
 ### TODOs
 
 - [x] v0.1.2 Page-Type Property Display — complete
+- [ ] v0.2.0 Multi-Category Page Creation — started
 
 ## Session Continuity
 
-**Last Session:** 2026-01-19
-**Completed:** v0.1.2 milestone archived
-**Next Step:** `/gsd:new-milestone` to start next milestone
+**Last Session:** 2026-02-02
+**Completed:** PROJECT.md and STATE.md updated for v0.2.0
+**Next Step:** Define requirements, then create roadmap
 
 ---
-*State updated: 2026-01-19*
+*State updated: 2026-02-02*
