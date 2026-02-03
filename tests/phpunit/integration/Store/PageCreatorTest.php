@@ -3,6 +3,7 @@
 namespace MediaWiki\Extension\SemanticSchemas\Tests\Integration\Store;
 
 use MediaWiki\Extension\SemanticSchemas\Store\PageCreator;
+use MediaWiki\MediaWikiServices;
 use MediaWiki\Title\Title;
 use MediaWikiIntegrationTestCase;
 
@@ -70,8 +71,8 @@ class PageCreatorTest extends MediaWikiIntegrationTestCase {
 		$result = $this->pageCreator->createOrUpdatePage( $title, 'Category page content', 'Create category' );
 
 		$this->assertTrue( $result );
-		$this->assertTrue( $this->pageCreator->pageExists( $title ) );
-		$this->assertEquals( NS_CATEGORY, $title->getNamespace() );
+		$reloaded = Title::makeTitle( NS_CATEGORY, $title->getText() );
+		$this->assertTrue( $reloaded->exists() );
 	}
 
 	public function testCreateOrUpdatePageInTemplateNamespace(): void {
@@ -80,8 +81,8 @@ class PageCreatorTest extends MediaWikiIntegrationTestCase {
 		$result = $this->pageCreator->createOrUpdatePage( $title, 'Template page content', 'Create template' );
 
 		$this->assertTrue( $result );
-		$this->assertTrue( $this->pageCreator->pageExists( $title ) );
-		$this->assertEquals( NS_TEMPLATE, $title->getNamespace() );
+		$reloaded = Title::makeTitle( NS_TEMPLATE, $title->getText() );
+		$this->assertTrue( $reloaded->exists() );
 	}
 
 	/* =========================================================================
@@ -91,18 +92,16 @@ class PageCreatorTest extends MediaWikiIntegrationTestCase {
 	public function testPageExistsReturnsFalseForNonExistentPage(): void {
 		$title = Title::makeTitle( NS_MAIN, 'NonExistentPage_' . uniqid() );
 
-		$result = $this->pageCreator->pageExists( $title );
-
-		$this->assertFalse( $result );
+		$this->assertFalse( $title->exists(), 'Pre-condition: MW confirms page does not exist' );
+		$this->assertFalse( $this->pageCreator->pageExists( $title ) );
 	}
 
 	public function testPageExistsReturnsTrueForExistingPage(): void {
 		$title = Title::makeTitle( NS_MAIN, 'ExistsPage_' . uniqid() );
 		$this->pageCreator->createOrUpdatePage( $title, 'Some content', 'Create' );
+		$this->assertTrue( $title->exists(), 'Pre-condition: MW confirms page exists' );
 
-		$result = $this->pageCreator->pageExists( $title );
-
-		$this->assertTrue( $result );
+		$this->assertTrue( $this->pageCreator->pageExists( $title ) );
 	}
 
 	/* =========================================================================
@@ -122,8 +121,12 @@ class PageCreatorTest extends MediaWikiIntegrationTestCase {
 		$content = 'Content to be read back.';
 		$this->pageCreator->createOrUpdatePage( $title, $content, 'Create' );
 
-		$result = $this->pageCreator->getPageContent( $title );
+		// Verify via MW directly as ground truth
+		$wikiPage = MediaWikiServices::getInstance()->getWikiPageFactory()->newFromTitle( $title );
+		$mwContent = $wikiPage->getContent()->getText();
+		$this->assertSame( $content, $mwContent, 'MW ground truth: stored content matches' );
 
+		$result = $this->pageCreator->getPageContent( $title );
 		$this->assertSame( $content, $result );
 	}
 
@@ -222,14 +225,14 @@ class PageCreatorTest extends MediaWikiIntegrationTestCase {
 	public function testDeletePageRemovesExistingPage(): void {
 		$title = Title::makeTitle( NS_MAIN, 'DeleteMe_' . uniqid() );
 		$this->pageCreator->createOrUpdatePage( $title, 'To be deleted', 'Create' );
-		$this->assertTrue( $this->pageCreator->pageExists( $title ) );
+		$this->assertTrue( $title->exists(), 'Pre-condition: page was created' );
 
 		$result = $this->pageCreator->deletePage( $title, 'Test deletion' );
 
 		$this->assertTrue( $result );
 		// Title::exists() caches; re-fetch to get fresh state
 		$freshTitle = Title::makeTitle( $title->getNamespace(), $title->getDBkey() );
-		$this->assertFalse( $this->pageCreator->pageExists( $freshTitle ) );
+		$this->assertFalse( $freshTitle->exists() );
 	}
 
 	public function testDeletePageReturnsTrueForNonExistentPage(): void {
@@ -310,5 +313,19 @@ class PageCreatorTest extends MediaWikiIntegrationTestCase {
 		$this->pageCreator->createOrUpdatePage( $title, 'Content', 'Create' );
 
 		$this->assertNull( $this->pageCreator->getLastError() );
+	}
+
+	public function testGetLastErrorReturnsMessageOnFailure(): void {
+		// NS_SPECIAL pages cannot be created — this should trigger an error
+		$title = Title::makeTitle( NS_SPECIAL, 'CannotCreate_' . uniqid() );
+
+		// Suppress the E_USER_WARNING from wfLogWarning so PHPUnit doesn't treat it as an error
+		set_error_handler( static function () {
+		}, E_USER_WARNING );
+		$result = $this->pageCreator->createOrUpdatePage( $title, 'Content', 'Create' );
+		restore_error_handler();
+
+		$this->assertFalse( $result );
+		$this->assertNotNull( $this->pageCreator->getLastError() );
 	}
 }
