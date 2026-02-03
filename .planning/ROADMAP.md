@@ -117,12 +117,12 @@ Plans:
   4. Page name input field allows naming the new page
   5. Submitting form generates composite form and redirects to Special:FormEdit
   6. JavaScript module is registered via ResourceLoader and loads without errors
-**Plans**: TBD
+**Plans**: 3 plans
 
 Plans:
-- [ ] 08-01: TBD
-- [ ] 08-02: TBD
-- [ ] 08-03: TBD
+- [ ] 08-01-PLAN.md -- Enhance multi-category API with property datatypes and category target namespaces
+- [ ] 08-02-PLAN.md -- Create SpecialCreateSemanticPage PHP class with registration, HTML skeleton, and POST handler
+- [ ] 08-03-PLAN.md -- Build client-side JS module and CSS for interactive tree, preview, and submit flow
 
 #### Phase 9: State Management Refactor
 **Goal**: StateManager uses template-level hashing instead of page-level hashing for dirty detection
@@ -153,5 +153,5 @@ Phases execute in numeric order: 3 -> 4 -> 5 -> 6 -> 7 -> 8 -> 9
 | 5. Property Resolution | v0.2.0 | 1/1 | Complete | 2026-02-02 |
 | 6. Composite Form Generation | v0.2.0 | 1/1 | Complete | 2026-02-02 |
 | 7. API Endpoint | v0.2.0 | 1/1 | Complete | 2026-02-02 |
-| 8. Create Page UI | v0.2.0 | 0/TBD | Not started | - |
+| 8. Create Page UI | v0.2.0 | 0/3 | Not started | - |
 | 9. State Management Refactor | v0.2.0 | 0/TBD | Not started | - |
