@@ -161,39 +161,52 @@ class CompositeFormGenerator extends FormGenerator {
 			. $this->s( $categoryName ) . ' Properties}}}';
 		$lines[] = '';
 
-		// Property fields
 		if ( $isFirst ) {
-			// First section: Shared properties + first-category-specific properties
-			$required = $this->getFirstSectionProperties(
-				$resolved->getRequiredProperties(),
-				$categoryName,
-				$resolved
+			// First section: separate shared from category-specific
+			$sharedRequired = $this->getSharedProperties(
+				$resolved->getRequiredProperties(), $resolved
 			);
-			$optional = $this->getFirstSectionProperties(
-				$resolved->getOptionalProperties(),
-				$categoryName,
-				$resolved
+			$sharedOptional = $this->getSharedProperties(
+				$resolved->getOptionalProperties(), $resolved
 			);
+
+			$catRequired = $this->getCategorySpecificProperties(
+				$resolved->getRequiredProperties(), $categoryName, $resolved
+			);
+			$catOptional = $this->getCategorySpecificProperties(
+				$resolved->getOptionalProperties(), $categoryName, $resolved
+			);
+
+			// Shared properties section
+			if ( !empty( $sharedRequired ) || !empty( $sharedOptional ) ) {
+				$lines[] = '=== Shared Properties ===';
+				$lines[] = '';
+				$lines = array_merge( $lines, $this->generatePropertySectionsForCategory(
+					$sharedRequired, $sharedOptional, $categoryName
+				) );
+			}
+
+			// Category-specific properties section
+			if ( !empty( $catRequired ) || !empty( $catOptional ) ) {
+				$lines[] = '=== ' . $this->s( $categoryName ) . ' Properties ===';
+				$lines[] = '';
+				$lines = array_merge( $lines, $this->generatePropertySectionsForCategory(
+					$catRequired, $catOptional, $categoryName
+				) );
+			}
 		} else {
-			// Subsequent sections: category-specific properties only (filter out shared)
+			// Subsequent sections: category-specific properties only
 			$required = $this->getCategorySpecificProperties(
-				$resolved->getRequiredProperties(),
-				$categoryName,
-				$resolved
+				$resolved->getRequiredProperties(), $categoryName, $resolved
 			);
 			$optional = $this->getCategorySpecificProperties(
-				$resolved->getOptionalProperties(),
-				$categoryName,
-				$resolved
+				$resolved->getOptionalProperties(), $categoryName, $resolved
 			);
-		}
 
-		// Generate property table sections
-		$lines = array_merge( $lines, $this->generatePropertySectionsForCategory(
-			$required,
-			$optional,
-			$categoryName
-		) );
+			$lines = array_merge( $lines, $this->generatePropertySectionsForCategory(
+				$required, $optional, $categoryName
+			) );
+		}
 
 		// Template closing
 		$lines[] = '{{{end template}}}';
@@ -203,32 +216,20 @@ class CompositeFormGenerator extends FormGenerator {
 	}
 
 	/**
-	 * Get properties for first template section.
-	 *
-	 * First section includes:
-	 * - All shared properties (appear in 2+ categories)
-	 * - First-category-specific properties
+	 * Get shared properties (appear in 2+ categories).
 	 *
 	 * @param array $allProperties All properties to filter
-	 * @param string $categoryName First category name
 	 * @param ResolvedPropertySet $resolved Resolved property set
 	 * @return array Filtered property names
 	 */
-	private function getFirstSectionProperties(
+	private function getSharedProperties(
 		array $allProperties,
-		string $categoryName,
 		ResolvedPropertySet $resolved
 	): array {
 		$filtered = [];
 
 		foreach ( $allProperties as $prop ) {
-			$sources = $resolved->getPropertySources( $prop );
-
-			// Include if:
-			// 1. Property is shared (appears in 2+ categories), OR
-			// 2. Property belongs to this first category specifically
-			if ( $resolved->isSharedProperty( $prop ) ||
-				 in_array( $categoryName, $sources, true ) ) {
+			if ( $resolved->isSharedProperty( $prop ) ) {
 				$filtered[] = $prop;
 			}
 		}
