@@ -35,7 +35,7 @@ class ApiSemanticSchemasMultiCategoryTest extends TestCase {
 			[ 'Person' ]
 		);
 
-		$result = $helper->formatProperties( $resolved );
+		$result = $helper->formatProperties( $resolved, [] );
 
 		$this->assertCount( 3, $result );
 
@@ -70,7 +70,7 @@ class ApiSemanticSchemasMultiCategoryTest extends TestCase {
 			[ 'Person', 'Employee' ]
 		);
 
-		$result = $helper->formatProperties( $resolved );
+		$result = $helper->formatProperties( $resolved, [] );
 
 		// "Has name" is shared
 		$hasName = array_filter( $result, static fn ( $p ) => $p['name'] === 'Has name' );
@@ -100,7 +100,7 @@ class ApiSemanticSchemasMultiCategoryTest extends TestCase {
 			[ 'Person', 'Employee' ]
 		);
 
-		$result = $helper->formatProperties( $resolved );
+		$result = $helper->formatProperties( $resolved, [] );
 
 		foreach ( $result as $property ) {
 			$this->assertIsInt( $property['required'], "required flag should be integer" );
@@ -108,6 +108,97 @@ class ApiSemanticSchemasMultiCategoryTest extends TestCase {
 			$this->assertContains( $property['required'], [ 0, 1 ], "required should be 0 or 1" );
 			$this->assertContains( $property['shared'], [ 0, 1 ], "shared should be 0 or 1" );
 		}
+	}
+
+	public function testFormatPropertiesIncludesDatatype(): void {
+		$helper = new TestableApiHelper();
+		$resolved = $this->createResolvedPropertySet(
+			[ 'Has name', 'Has email' ],
+			[ 'Has age' ],
+			[
+				'Has name' => [ 'Person' ],
+				'Has email' => [ 'Person' ],
+				'Has age' => [ 'Person' ],
+			],
+			[],
+			[],
+			[],
+			[ 'Person' ]
+		);
+
+		$datatypeMap = [
+			'Has name' => 'Text',
+			'Has email' => 'Email',
+			'Has age' => 'Number',
+		];
+
+		$result = $helper->formatProperties( $resolved, $datatypeMap );
+
+		// All properties should have datatype field
+		foreach ( $result as $property ) {
+			$this->assertArrayHasKey( 'datatype', $property, 'Property should have datatype field' );
+		}
+
+		// Check specific datatypes
+		$hasName = array_filter( $result, static fn ( $p ) => $p['name'] === 'Has name' );
+		$hasName = array_values( $hasName )[0];
+		$this->assertSame( 'Text', $hasName['datatype'] );
+
+		$hasEmail = array_filter( $result, static fn ( $p ) => $p['name'] === 'Has email' );
+		$hasEmail = array_values( $hasEmail )[0];
+		$this->assertSame( 'Email', $hasEmail['datatype'] );
+
+		$hasAge = array_filter( $result, static fn ( $p ) => $p['name'] === 'Has age' );
+		$hasAge = array_values( $hasAge )[0];
+		$this->assertSame( 'Number', $hasAge['datatype'] );
+	}
+
+	public function testFormatPropertiesDatatypeFallback(): void {
+		$helper = new TestableApiHelper();
+		$resolved = $this->createResolvedPropertySet(
+			[ 'Has name' ],
+			[],
+			[ 'Has name' => [ 'Person' ] ],
+			[],
+			[],
+			[],
+			[ 'Person' ]
+		);
+
+		// Empty datatype map - should fallback to 'Page'
+		$result = $helper->formatProperties( $resolved, [] );
+
+		$this->assertCount( 1, $result );
+		$this->assertSame( 'Page', $result[0]['datatype'], 'Should fallback to Page when datatype not in map' );
+	}
+
+	/* =========================================================================
+	 * CATEGORY FORMATTING
+	 * ========================================================================= */
+
+	public function testFormatCategoriesWithNamespaces(): void {
+		$helper = new TestableApiHelper();
+
+		// Mock category models
+		$person = $this->createMockCategory( 'Person', null );
+		$employee = $this->createMockCategory( 'Employee', 'Staff' );
+
+		$allCategories = [
+			'Person' => $person,
+			'Employee' => $employee,
+		];
+
+		$result = $helper->formatCategories( [ 'Person', 'Employee' ], $allCategories );
+
+		$this->assertCount( 2, $result );
+
+		// Person with null namespace
+		$this->assertSame( 'Person', $result[0]['name'] );
+		$this->assertNull( $result[0]['targetNamespace'] );
+
+		// Employee with Staff namespace
+		$this->assertSame( 'Employee', $result[1]['name'] );
+		$this->assertSame( 'Staff', $result[1]['targetNamespace'] );
 	}
 
 	/* =========================================================================
@@ -197,7 +288,7 @@ class ApiSemanticSchemasMultiCategoryTest extends TestCase {
 		$helper = new TestableApiHelper();
 		$resolved = ResolvedPropertySet::empty();
 
-		$properties = $helper->formatProperties( $resolved );
+		$properties = $helper->formatProperties( $resolved, [] );
 		$subobjects = $helper->formatSubobjects( $resolved );
 
 		$this->assertSame( [], $properties );
@@ -230,6 +321,34 @@ class ApiSemanticSchemasMultiCategoryTest extends TestCase {
 			$categoryNames
 		);
 	}
+
+	/**
+	 * Create a mock CategoryModel for testing.
+	 *
+	 * @param string $name Category name
+	 * @param string|null $targetNamespace Target namespace
+	 * @return object Mock category object (anonymous class)
+	 */
+	// phpcs:ignore MediaWiki.Commenting.FunctionComment.ObjectTypeHintReturn
+	private function createMockCategory( string $name, ?string $targetNamespace ): object {
+		return new class( $name, $targetNamespace ) {
+			private string $name;
+			private ?string $targetNamespace;
+
+			public function __construct( string $name, ?string $targetNamespace ) {
+				$this->name = $name;
+				$this->targetNamespace = $targetNamespace;
+			}
+
+			public function getName(): string {
+				return $this->name;
+			}
+
+			public function getTargetNamespace(): ?string {
+				return $this->targetNamespace;
+			}
+		};
+	}
 }
 
 /* =============================================================================
@@ -245,12 +364,33 @@ class ApiSemanticSchemasMultiCategoryTest extends TestCase {
 class TestableApiHelper {
 
 	/**
+	 * Format categories for API response.
+	 *
+	 * @param string[] $categoryNames Normalized category names
+	 * @param array $allCategories Map of category name => CategoryModel (or mock)
+	 * @return array[] Array of category entries with name and targetNamespace
+	 */
+	public function formatCategories( array $categoryNames, array $allCategories ): array {
+		$formatted = [];
+
+		foreach ( $categoryNames as $name ) {
+			$formatted[] = [
+				'name' => $name,
+				'targetNamespace' => $allCategories[$name]->getTargetNamespace(),
+			];
+		}
+
+		return $formatted;
+	}
+
+	/**
 	 * Format properties for API response.
 	 *
 	 * @param ResolvedPropertySet $resolved Resolution result
+	 * @param array $datatypeMap Map of property name => datatype
 	 * @return array[] Array of property entries
 	 */
-	public function formatProperties( ResolvedPropertySet $resolved ): array {
+	public function formatProperties( ResolvedPropertySet $resolved, array $datatypeMap ): array {
 		$formatted = [];
 
 		// Required properties
@@ -262,6 +402,7 @@ class TestableApiHelper {
 				'required' => 1,
 				'shared' => count( $sources ) > 1 ? 1 : 0,
 				'sources' => $sources,
+				'datatype' => $datatypeMap[$property] ?? 'Page',
 			];
 		}
 
@@ -274,6 +415,7 @@ class TestableApiHelper {
 				'required' => 0,
 				'shared' => count( $sources ) > 1 ? 1 : 0,
 				'sources' => $sources,
+				'datatype' => $datatypeMap[$property] ?? 'Page',
 			];
 		}
 
