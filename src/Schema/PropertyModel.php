@@ -188,11 +188,11 @@ class PropertyModel {
 		// Fallback with logging
 		if ( function_exists( 'wfLogWarning' ) ) {
 			wfLogWarning(
-				"SemanticSchemas: Unknown datatype '{$datatype}' for property '{$this->name}'. Defaulting to 'Text'."
+				"SemanticSchemas: Unknown datatype '{$datatype}' for property '{$this->name}'. Defaulting to 'Page'."
 			);
 		}
 
-		return 'Text';
+		return 'Page';
 	}
 
 	private function autoGenerateLabel( string $name ): string {

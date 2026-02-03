@@ -45,7 +45,7 @@ class WikiPropertyStore {
 		// Ensure canonical minimal fields
 		// Use NamingHelper to generate human-readable label from property name
 		$data += [
-			'datatype' => 'Text',
+			'datatype' => 'Page',
 			'label' => NamingHelper::generatePropertyLabel( $canonical ),
 			'description' => '',
 			'allowedValues' => [],

@@ -254,9 +254,10 @@
       "label": "Input type",
       "description": "Override the auto-detected PageForms input type for this property.",
       "allowedValues": [
-        "text", "textarea", "dropdown", "radiobutton", "combobox",
-        "tokens", "checkbox", "checkboxes", "listbox",
-        "datepicker", "datetimepicker", "tree"
+        "checkbox", "checkboxes", "combobox", "date", "datepicker",
+        "datetime", "datetimepicker", "dropdown", "googlemaps", "leaflet",
+        "listbox", "openlayers", "radiobutton", "rating", "regexp",
+        "text", "textarea", "tokens", "tree", "year"
       ],
       "allowsMultipleValues": false
     },
