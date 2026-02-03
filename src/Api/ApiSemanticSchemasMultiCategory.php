@@ -7,6 +7,7 @@ use MediaWiki\Extension\SemanticSchemas\Schema\InheritanceResolver;
 use MediaWiki\Extension\SemanticSchemas\Schema\MultiCategoryResolver;
 use MediaWiki\Extension\SemanticSchemas\Schema\ResolvedPropertySet;
 use MediaWiki\Extension\SemanticSchemas\Store\WikiCategoryStore;
+use MediaWiki\Extension\SemanticSchemas\Store\WikiPropertyStore;
 
 /**
  * ApiSemanticSchemasMultiCategory
@@ -47,10 +48,18 @@ class ApiSemanticSchemasMultiCategory extends ApiBase {
 		$multiResolver = new MultiCategoryResolver( $inheritanceResolver );
 		$resolved = $multiResolver->resolve( $categoryNames );
 
+		// Load property datatypes
+		$propertyStore = new WikiPropertyStore();
+		$allProperties = $propertyStore->getAllProperties();
+		$datatypeMap = [];
+		foreach ( $allProperties as $property ) {
+			$datatypeMap[$property->getName()] = $property->getDatatype();
+		}
+
 		// Build response
 		$response = [
-			'categories' => $categoryNames,
-			'properties' => $this->formatProperties( $resolved ),
+			'categories' => $this->formatCategories( $categoryNames, $allCategories ),
+			'properties' => $this->formatProperties( $resolved, $datatypeMap ),
 			'subobjects' => $this->formatSubobjects( $resolved ),
 		];
 
@@ -104,12 +113,33 @@ class ApiSemanticSchemasMultiCategory extends ApiBase {
 	 * ===================================================================== */
 
 	/**
+	 * Format categories for API response.
+	 *
+	 * @param string[] $categoryNames Normalized category names
+	 * @param array $allCategories Map of category name => CategoryModel
+	 * @return array[] Array of category entries with name and targetNamespace
+	 */
+	private function formatCategories( array $categoryNames, array $allCategories ): array {
+		$formatted = [];
+
+		foreach ( $categoryNames as $name ) {
+			$formatted[] = [
+				'name' => $name,
+				'targetNamespace' => $allCategories[$name]->getTargetNamespace(),
+			];
+		}
+
+		return $formatted;
+	}
+
+	/**
 	 * Format properties for API response.
 	 *
 	 * @param ResolvedPropertySet $resolved Resolution result
+	 * @param array $datatypeMap Map of property name => datatype
 	 * @return array[] Array of property entries
 	 */
-	protected function formatProperties( ResolvedPropertySet $resolved ): array {
+	protected function formatProperties( ResolvedPropertySet $resolved, array $datatypeMap ): array {
 		$formatted = [];
 
 		// Required properties
@@ -121,6 +151,7 @@ class ApiSemanticSchemasMultiCategory extends ApiBase {
 				'required' => 1,
 				'shared' => count( $sources ) > 1 ? 1 : 0,
 				'sources' => $sources,
+				'datatype' => $datatypeMap[$property] ?? 'Page',
 			];
 		}
 
@@ -133,6 +164,7 @@ class ApiSemanticSchemasMultiCategory extends ApiBase {
 				'required' => 0,
 				'shared' => count( $sources ) > 1 ? 1 : 0,
 				'sources' => $sources,
+				'datatype' => $datatypeMap[$property] ?? 'Page',
 			];
 		}
 
