@@ -59,19 +59,19 @@ class CategoryPageHooks {
 		];
 	}
 
-    /**
-     * Displays the inheritance hierarchy in the footer of category pages
-     * @param Article $article
-     * @param bool $patrolFooterShown
-     * @return bool
-     */
-    public static function onArticleViewFooter( Article $article, bool $patrolFooterShown): bool {
-        $title = $article->getTitle();
-        if ($title->getNamespace() !== NS_CATEGORY) {
-            return true;
-        }
-        $output = $article->getContext()->getOutput();
-        $output->addWikiTextAsContent('{{#semanticschemas_hierarchy:' . $title->getText() . '}}');
-        return true;
-    }
+	/**
+	 * Displays the inheritance hierarchy in the footer of category pages
+	 * @param Article $article
+	 * @param bool $patrolFooterShown
+	 * @return bool
+	 */
+	public static function onArticleViewFooter( Article $article, bool $patrolFooterShown ): bool {
+		$title = $article->getTitle();
+		if ( $title->getNamespace() !== NS_CATEGORY ) {
+			return true;
+		}
+		$output = $article->getContext()->getOutput();
+		$output->addWikiTextAsContent( '{{#semanticschemas_hierarchy:' . $title->getText() . '}}' );
+		return true;
+	}
 }
