@@ -24,7 +24,7 @@ use MediaWiki\Extension\SemanticSchemas\Util\NamingHelper;
  */
 class FormGenerator {
 
-	private PageCreator $pageCreator;
+	protected PageCreator $pageCreator;
 	private WikiPropertyStore $propertyStore;
 	private PropertyInputMapper $inputMapper;
 	private WikiSubobjectStore $subobjectStore;
