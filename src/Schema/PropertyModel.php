@@ -3,6 +3,7 @@
 namespace MediaWiki\Extension\SemanticSchemas\Schema;
 
 use InvalidArgumentException;
+use MediaWiki\Extension\SemanticSchemas\Util\NamingHelper;
 
 /**
  * Immutable, canonical schema-level representation of an SMW Property.
@@ -36,9 +37,6 @@ class PropertyModel {
 
 	private ?string $hasTemplate;
 
-	/** @var string|null Raw template wikitext from "Has template" */
-	private ?string $templateSource = null;
-
 	private ?string $allowedCategory;
 	private ?string $allowedNamespace;
 	private bool $allowsMultipleValues;
@@ -68,7 +66,7 @@ class PropertyModel {
 		/* -------------------- Label -------------------- */
 		$this->label = !empty( $data['label'] )
 			? (string)$data['label']
-			: $this->autoGenerateLabel( $this->name );
+			: NamingHelper::generatePropertyLabel( $this->name );
 
 		/* -------------------- Description -------------------- */
 		$this->description = isset( $data['description'] )
@@ -116,8 +114,6 @@ class PropertyModel {
 		$this->hasTemplate = ( $template !== null && trim( $template ) !== '' )
 			? trim( $template )
 			: null;
-
-		$this->templateSource = $data['templateSource'] ?? null;
 
 		/* -------------------- Autocomplete restrictions -------------------- */
 		$cat = $data['allowedCategory'] ?? null;
@@ -193,12 +189,6 @@ class PropertyModel {
 		}
 
 		return 'Page';
-	}
-
-	private function autoGenerateLabel( string $name ): string {
-		$clean = preg_replace( '/^Has[_ ]+/i', '', $name );
-		$clean = str_replace( '_', ' ', $clean );
-		return ucwords( $clean );
 	}
 
 	/* -------------------------------------------------------------------------
@@ -312,11 +302,4 @@ class PropertyModel {
 		);
 	}
 
-	/* -------------------------------------------------------------------------
-	 * SMW Type
-	 * ---------------------------------------------------------------------- */
-
-	public function getSMWType(): string {
-		return $this->datatype;
-	}
 }

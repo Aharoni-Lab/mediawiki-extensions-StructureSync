@@ -157,13 +157,13 @@ class SpecialSemanticSchemas extends SpecialPage {
 
 		// Check for install-properties action (Step 1)
 		if ( $action === 'install-properties' ) {
-			$this->handleInstallPropertiesAction();
+			$this->showAutomatedInstaller();
 			return;
 		}
 
 		// Check for install-categories action (Step 2)
 		if ( $action === 'install-categories' ) {
-			$this->handleInstallCategoriesAction();
+			$this->showAutomatedInstaller();
 			return;
 		}
 
@@ -335,7 +335,7 @@ class SpecialSemanticSchemas extends SpecialPage {
 			}
 		} else {
 			// GET request - show confirmation form
-			$this->showInstallConfigConfirmation();
+			$this->showAutomatedInstaller();
 			return;
 		}
 
@@ -429,22 +429,6 @@ class SpecialSemanticSchemas extends SpecialPage {
 	}
 
 	/**
-	 * Handle the "install-properties" action (Step 1 of 2) - legacy handler.
-	 * Redirects to the automated installer.
-	 */
-	private function handleInstallPropertiesAction(): void {
-		$this->showAutomatedInstaller();
-	}
-
-	/**
-	 * Handle the "install-categories" action (Step 2 of 2) - legacy handler.
-	 * Redirects to the automated installer.
-	 */
-	private function handleInstallCategoriesAction(): void {
-		$this->showAutomatedInstaller();
-	}
-
-	/**
 	 * Show the automated layer-by-layer installer with JavaScript progress monitoring.
 	 *
 	 * This installer creates wiki pages in 4 layers via separate API calls, waiting for
@@ -498,31 +482,7 @@ class SpecialSemanticSchemas extends SpecialPage {
 
 			// Progress display
 			Html::rawElement( 'div', [ 'id' => 'ss-progress' ],
-				Html::rawElement( 'div', [ 'id' => 'ss-layer0', 'class' => 'ss-layer' ],
-					Html::rawElement( 'span', [ 'class' => 'ss-layer-status' ], '○' ) . ' ' .
-					Html::element( 'span', [ 'class' => 'ss-layer-name' ], 'Layer 0: Templates' ) .
-					Html::element( 'span', [ 'class' => 'ss-layer-info' ], '' )
-				) .
-				Html::rawElement( 'div', [ 'id' => 'ss-layer1', 'class' => 'ss-layer' ],
-					Html::rawElement( 'span', [ 'class' => 'ss-layer-status' ], '○' ) . ' ' .
-					Html::element( 'span', [ 'class' => 'ss-layer-name' ], 'Layer 1: Property Types' ) .
-					Html::element( 'span', [ 'class' => 'ss-layer-info' ], '' )
-				) .
-				Html::rawElement( 'div', [ 'id' => 'ss-layer2', 'class' => 'ss-layer' ],
-					Html::rawElement( 'span', [ 'class' => 'ss-layer-status' ], '○' ) . ' ' .
-					Html::element( 'span', [ 'class' => 'ss-layer-name' ], 'Layer 2: Property Annotations' ) .
-					Html::element( 'span', [ 'class' => 'ss-layer-info' ], '' )
-				) .
-				Html::rawElement( 'div', [ 'id' => 'ss-layer3', 'class' => 'ss-layer' ],
-					Html::rawElement( 'span', [ 'class' => 'ss-layer-status' ], '○' ) . ' ' .
-					Html::element( 'span', [ 'class' => 'ss-layer-name' ], 'Layer 3: Subobjects' ) .
-					Html::element( 'span', [ 'class' => 'ss-layer-info' ], '' )
-				) .
-				Html::rawElement( 'div', [ 'id' => 'ss-layer4', 'class' => 'ss-layer' ],
-					Html::rawElement( 'span', [ 'class' => 'ss-layer-status' ], '○' ) . ' ' .
-					Html::element( 'span', [ 'class' => 'ss-layer-name' ], 'Layer 4: Categories' ) .
-					Html::element( 'span', [ 'class' => 'ss-layer-info' ], '' )
-				) .
+				$this->renderLayerProgressItems() .
 				Html::rawElement( 'div', [ 'id' => 'ss-jobs' ],
 					Html::element( 'span', [], 'Waiting for SMW jobs: ' ) .
 					Html::element( 'span', [ 'id' => 'ss-job-count' ], '0' )
@@ -561,10 +521,28 @@ class SpecialSemanticSchemas extends SpecialPage {
 	}
 
 	/**
-	 * Show the install config confirmation form with two-step process.
+	 * Render the layer progress items for the automated installer.
+	 *
+	 * @return string HTML
 	 */
-	private function showInstallConfigConfirmation(): void {
-		$this->showAutomatedInstaller();
+	private function renderLayerProgressItems(): string {
+		$layers = [
+			[ 'ss-layer0', 'Layer 0: Templates' ],
+			[ 'ss-layer1', 'Layer 1: Property Types' ],
+			[ 'ss-layer2', 'Layer 2: Property Annotations' ],
+			[ 'ss-layer3', 'Layer 3: Subobjects' ],
+			[ 'ss-layer4', 'Layer 4: Categories' ],
+		];
+
+		$html = '';
+		foreach ( $layers as [ $id, $label ] ) {
+			$html .= Html::rawElement( 'div', [ 'id' => $id, 'class' => 'ss-layer' ],
+				Html::rawElement( 'span', [ 'class' => 'ss-layer-status' ], '○' ) . ' ' .
+				Html::element( 'span', [ 'class' => 'ss-layer-name' ], $label ) .
+				Html::element( 'span', [ 'class' => 'ss-layer-info' ], '' )
+			);
+		}
+		return $html;
 	}
 
 	/**
@@ -1396,23 +1374,22 @@ class SpecialSemanticSchemas extends SpecialPage {
 		$formGenerator = new FormGenerator();
 		$displayGenerator = new DisplayStubGenerator();
 
+		$categories = $this->getTargetCategories( $categoryStore, $categoryName );
+
+		if ( empty( $categories ) ) {
+			$output->addHTML( Html::errorBox(
+				$this->msg( 'semanticschemas-generate-no-categories' )->text()
+			) );
+			return;
+		}
+
+		$output->addHTML(
+			Html::openElement( 'div', [ 'class' => 'semanticschemas-progress' ] ) .
+			Html::element( 'p', [], $this->msg( 'semanticschemas-generate-inprogress' )->text() ) .
+			Html::openElement( 'div', [ 'class' => 'semanticschemas-progress-log' ] )
+		);
+
 		try {
-			$categories = $this->getTargetCategories( $categoryStore, $categoryName );
-
-			if ( empty( $categories ) ) {
-				$output->addHTML( Html::errorBox(
-					$this->msg( 'semanticschemas-generate-no-categories' )->text()
-				) );
-				return;
-			}
-
-			$progressContainerOpen = true;
-			$output->addHTML(
-				Html::openElement( 'div', [ 'class' => 'semanticschemas-progress' ] ) .
-				Html::element( 'p', [], $this->msg( 'semanticschemas-generate-inprogress' )->text() ) .
-				Html::openElement( 'div', [ 'class' => 'semanticschemas-progress-log' ] )
-			);
-
 			$categoryMap = $this->buildCategoryMap( $categoryStore );
 			$resolver = new InheritanceResolver( $categoryMap );
 			$generateDisplay = $request->getBool( 'generate-display' );
@@ -1433,10 +1410,9 @@ class SpecialSemanticSchemas extends SpecialPage {
 
 				try {
 					$effective = $resolver->getEffectiveCategory( $name );
-					$ancestors = $resolver->getAncestors( $name );
 
 					$templateGenerator->generateAllTemplates( $effective );
-					$formGenerator->generateAndSaveForm( $effective, $ancestors );
+					$formGenerator->generateAndSaveForm( $effective );
 
 					if ( $generateDisplay ) {
 						$displayGenerator->generateOrUpdateDisplayStub( $effective );
@@ -1465,11 +1441,6 @@ class SpecialSemanticSchemas extends SpecialPage {
 				$stateManager->clearDirty();
 			}
 
-			if ( $progressContainerOpen ) {
-				$this->closeProgressContainer();
-				$progressContainerOpen = false;
-			}
-
 			$this->logOperation( 'generate', 'Template/form generation completed', [
 				'categoryFilter' => $categoryName ?: 'all',
 				'categoriesProcessed' => $successCount,
@@ -1485,10 +1456,6 @@ class SpecialSemanticSchemas extends SpecialPage {
 				)
 			);
 		} catch ( \Exception $e ) {
-			if ( $progressContainerOpen ) {
-				$this->closeProgressContainer();
-			}
-
 			$this->logOperation( 'generate', 'Generation exception: ' . $e->getMessage(), [
 				'exception' => get_class( $e ),
 				'categoryFilter' => $categoryName ?? '',
@@ -1497,6 +1464,8 @@ class SpecialSemanticSchemas extends SpecialPage {
 			$output->addHTML( Html::errorBox(
 				$this->msg( 'semanticschemas-generate-error' )->params( $e->getMessage() )->text()
 			) );
+		} finally {
+			$this->closeProgressContainer();
 		}
 	}
 

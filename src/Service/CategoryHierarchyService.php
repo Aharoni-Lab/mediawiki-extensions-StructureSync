@@ -185,7 +185,7 @@ class CategoryHierarchyService {
 	}
 
 	/* =====================================================================
-	 * INTERNAL: INHERITED PROPERTIES
+	 * INTERNAL: INHERITED PROPERTIES & SUBOBJECTS
 	 * ===================================================================== */
 
 	private function extractInheritedProperties(
@@ -195,44 +195,11 @@ class CategoryHierarchyService {
 	): array {
 		$output = [];
 		$seen = [];
-
-		foreach ( $resolver->getAncestors( $name ) as $ancestor ) {
-			$model = $all[$ancestor] ?? null;
-			if ( !$model ) {
-				continue;
-			}
-
-			$source = "Category:$ancestor";
-
-			foreach ( $model->getRequiredProperties() as $p ) {
-				if ( !isset( $seen[$p] ) ) {
-					$output[] = [
-						'propertyTitle' => "Property:$p",
-						'sourceCategory' => $source,
-						'required' => true,
-					];
-					$seen[$p] = true;
-				}
-			}
-
-			foreach ( $model->getOptionalProperties() as $p ) {
-				if ( !isset( $seen[$p] ) ) {
-					$output[] = [
-						'propertyTitle' => "Property:$p",
-						'sourceCategory' => $source,
-						'required' => false,
-					];
-					$seen[$p] = true;
-				}
-			}
-		}
-
+		$this->collectPropertiesFromAncestors(
+			$resolver->getAncestors( $name ), $all, $output, $seen
+		);
 		return $output;
 	}
-
-	/* =====================================================================
-	 * INTERNAL: INHERITED SUBGROUPS
-	 * ===================================================================== */
 
 	private function extractInheritedSubobjects(
 		string $name,
@@ -241,45 +208,32 @@ class CategoryHierarchyService {
 	): array {
 		$output = [];
 		$seen = [];
-
-		foreach ( $resolver->getAncestors( $name ) as $ancestor ) {
-			$model = $all[$ancestor] ?? null;
-			if ( !$model ) {
-				continue;
-			}
-
-			$source = "Category:$ancestor";
-
-			foreach ( $model->getRequiredSubobjects() as $sg ) {
-				if ( !isset( $seen[$sg] ) ) {
-					$output[] = [
-						'subobjectTitle' => "Subobject:$sg",
-						'sourceCategory' => $source,
-						'required' => 1,
-					];
-					$seen[$sg] = true;
-				}
-			}
-
-			foreach ( $model->getOptionalSubobjects() as $sg ) {
-				if ( !isset( $seen[$sg] ) ) {
-					$output[] = [
-						'subobjectTitle' => "Subobject:$sg",
-						'sourceCategory' => $source,
-						'required' => 0,
-					];
-					$seen[$sg] = true;
-				}
-			}
-		}
-
+		$this->collectSubobjectsFromAncestors(
+			$resolver->getAncestors( $name ), $all, $output, $seen
+		);
 		return $output;
 	}
 
 	/* =====================================================================
 	 * INTERNAL: VIRTUAL-INHERITANCE (FORM PREVIEW)
+	 *
+	 * "Virtual" means the category does not yet exist in the wiki. When the
+	 * user is creating a new category via the UI, these methods resolve what
+	 * properties and subobjects the new category *would* inherit from its
+	 * chosen parents so the form can preview inherited fields in real time.
 	 * ===================================================================== */
 
+	/**
+	 * Collect inherited properties for a category that does not yet exist.
+	 *
+	 * Resolves the full ancestor chain of each selected parent and aggregates
+	 * all properties with their required/optional flags and source categories.
+	 *
+	 * @param string[] $parents Parent category names (no namespace prefix)
+	 * @param array<string,\MediaWiki\Extension\SemanticSchemas\Schema\CategoryModel> $all
+	 *   All existing CategoryModels keyed by name
+	 * @return array List of inherited property descriptors
+	 */
 	private function extractVirtualInheritedProperties(
 		array $parents,
 		array $all
@@ -290,53 +244,26 @@ class CategoryHierarchyService {
 
 		$output = [];
 		$seen = [];
-
 		$resolver = new InheritanceResolver( $all );
 
 		foreach ( $parents as $parent ) {
-			foreach ( $resolver->getAncestors( $parent ) as $ancestor ) {
-				$model = $all[$ancestor] ?? null;
-				if ( !$model ) {
-					continue;
-				}
-
-				$source = "Category:$ancestor";
-
-				foreach ( $model->getRequiredProperties() as $p ) {
-					if ( !isset( $seen[$p] ) ) {
-						$output[] = [
-							'propertyTitle' => "Property:$p",
-							'sourceCategory' => $source,
-							'required' => true,
-						];
-						$seen[$p] = true;
-					}
-				}
-
-				foreach ( $model->getOptionalProperties() as $p ) {
-					if ( !isset( $seen[$p] ) ) {
-						$output[] = [
-							'propertyTitle' => "Property:$p",
-							'sourceCategory' => $source,
-							'required' => false,
-						];
-						$seen[$p] = true;
-					}
-				}
-			}
+			$this->collectPropertiesFromAncestors(
+				$resolver->getAncestors( $parent ), $all, $output, $seen
+			);
 		}
 
 		return $output;
 	}
 
 	/**
-	 * Extract inherited subobjects for virtual category (form preview).
+	 * Collect inherited subobjects for a category that does not yet exist.
 	 *
-	 * Similar to extractVirtualInheritedProperties but for subobjects.
+	 * Same as extractVirtualInheritedProperties but for subobject definitions.
 	 *
-	 * @param array $parents Array of parent category names (no namespace)
-	 * @param array $all All category models
-	 * @return array Array of subobject entries with subobjectTitle, sourceCategory, required
+	 * @param string[] $parents Parent category names (no namespace prefix)
+	 * @param array<string,\MediaWiki\Extension\SemanticSchemas\Schema\CategoryModel> $all
+	 *   All existing CategoryModels keyed by name
+	 * @return array List of inherited subobject descriptors
 	 */
 	private function extractVirtualInheritedSubobjects(
 		array $parents,
@@ -348,42 +275,88 @@ class CategoryHierarchyService {
 
 		$output = [];
 		$seen = [];
-
 		$resolver = new InheritanceResolver( $all );
 
 		foreach ( $parents as $parent ) {
-			foreach ( $resolver->getAncestors( $parent ) as $ancestor ) {
-				$model = $all[$ancestor] ?? null;
-				if ( !$model ) {
-					continue;
-				}
-
-				$source = "Category:$ancestor";
-
-				foreach ( $model->getRequiredSubobjects() as $sg ) {
-					if ( !isset( $seen[$sg] ) ) {
-						$output[] = [
-							'subobjectTitle' => "Subobject:$sg",
-							'sourceCategory' => $source,
-							'required' => 1,
-						];
-						$seen[$sg] = true;
-					}
-				}
-
-				foreach ( $model->getOptionalSubobjects() as $sg ) {
-					if ( !isset( $seen[$sg] ) ) {
-						$output[] = [
-							'subobjectTitle' => "Subobject:$sg",
-							'sourceCategory' => $source,
-							'required' => 0,
-						];
-						$seen[$sg] = true;
-					}
-				}
-			}
+			$this->collectSubobjectsFromAncestors(
+				$resolver->getAncestors( $parent ), $all, $output, $seen
+			);
 		}
 
 		return $output;
+	}
+
+	/* =====================================================================
+	 * INTERNAL: ANCESTOR COLLECTION HELPERS
+	 * ===================================================================== */
+
+	/**
+	 * Iterate ancestors and collect properties with deduplication.
+	 *
+	 * @param string[] $ancestors Ordered ancestor list
+	 * @param array $all All category models keyed by name
+	 * @param array &$output Accumulates result entries
+	 * @param array &$seen Tracks already-collected item names
+	 */
+	private function collectPropertiesFromAncestors(
+		array $ancestors,
+		array $all,
+		array &$output,
+		array &$seen
+	): void {
+		foreach ( $ancestors as $ancestor ) {
+			$model = $all[$ancestor] ?? null;
+			if ( !$model ) {
+				continue;
+			}
+
+			$source = "Category:$ancestor";
+
+			foreach ( $model->getTaggedProperties() as $tagged ) {
+				if ( !isset( $seen[$tagged['name']] ) ) {
+					$output[] = [
+						'propertyTitle' => 'Property:' . $tagged['name'],
+						'sourceCategory' => $source,
+						'required' => $tagged['required'],
+					];
+					$seen[$tagged['name']] = true;
+				}
+			}
+		}
+	}
+
+	/**
+	 * Iterate ancestors and collect subobjects with deduplication.
+	 *
+	 * @param string[] $ancestors Ordered ancestor list
+	 * @param array $all All category models keyed by name
+	 * @param array &$output Accumulates result entries
+	 * @param array &$seen Tracks already-collected item names
+	 */
+	private function collectSubobjectsFromAncestors(
+		array $ancestors,
+		array $all,
+		array &$output,
+		array &$seen
+	): void {
+		foreach ( $ancestors as $ancestor ) {
+			$model = $all[$ancestor] ?? null;
+			if ( !$model ) {
+				continue;
+			}
+
+			$source = "Category:$ancestor";
+
+			foreach ( $model->getTaggedSubobjects() as $tagged ) {
+				if ( !isset( $seen[$tagged['name']] ) ) {
+					$output[] = [
+						'subobjectTitle' => 'Subobject:' . $tagged['name'],
+						'sourceCategory' => $source,
+						'required' => $tagged['required'],
+					];
+					$seen[$tagged['name']] = true;
+				}
+			}
+		}
 	}
 }
