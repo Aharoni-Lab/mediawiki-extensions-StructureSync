@@ -133,11 +133,11 @@ Plans:
   2. Multi-category pages do not trigger false-positive dirty warnings when one category schema changes
   3. Existing single-category state tracking continues working after refactor
   4. State JSON structure correctly stores and retrieves template-level hashes
-**Plans**: TBD
+**Plans**: 2 plans
 
 Plans:
-- [ ] 09-01: TBD
-- [ ] 09-02: TBD
+- [ ] 09-01-PLAN.md -- Add templateHashes infrastructure to StateManager + PageHashComputer, unit tests
+- [ ] 09-02-PLAN.md -- Wire template hashing into generation flow, validation, and maintenance script
 
 ## Progress
 
@@ -154,4 +154,4 @@ Phases execute in numeric order: 3 -> 4 -> 5 -> 6 -> 7 -> 8 -> 9
 | 6. Composite Form Generation | v0.2.0 | 1/1 | Complete | 2026-02-02 |
 | 7. API Endpoint | v0.2.0 | 1/1 | Complete | 2026-02-02 |
 | 8. Create Page UI | v0.2.0 | 3/3 | Complete | 2026-02-03 |
-| 9. State Management Refactor | v0.2.0 | 0/TBD | Not started | - |
+| 9. State Management Refactor | v0.2.0 | 0/2 | Not started | - |
