@@ -71,7 +71,7 @@ class CategoryPageHooks {
             return true;
         }
         $output = $article->getContext()->getOutput();
-        $output->addWikiTextAsContent('{{#semanticschemas_hierarchy:' . $title->getDBkey() . '}}');
+        $output->addWikiTextAsContent('{{#semanticschemas_hierarchy:' . $title->getText() . '}}');
         return true;
     }
 }
