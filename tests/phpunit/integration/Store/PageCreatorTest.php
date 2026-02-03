@@ -26,6 +26,7 @@ class PageCreatorTest extends MediaWikiIntegrationTestCase {
 
 	public function testCreateOrUpdatePageCreatesNewPage(): void {
 		$title = Title::makeTitle( NS_MAIN, 'NewPage_' . uniqid() );
+		$this->assertFalse( $title->exists() );
 
 		$result = $this->pageCreator->createOrUpdatePage( $title, 'Test content', 'Test summary' );
 
