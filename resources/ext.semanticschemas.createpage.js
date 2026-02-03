@@ -4,7 +4,7 @@
  * Interactive category selection, live property preview, and form submission.
  *
  * Architecture:
- * - Checkbox tree with expand/collapse
+ * - Checkbox tree with expand/collapse (built from embedded category data)
  * - Chip list for selected categories
  * - Debounced AJAX property preview
  * - Namespace conflict resolution
@@ -25,7 +25,7 @@
 	var requestCounter = 0; // Race condition prevention
 	var selectedCategories = {}; // { categoryName: true }
 	var currentNamespace = null; // Selected namespace (null = default)
-	var treeData = null; // Cached hierarchy data
+	var treeData = null; // Cached tree data
 
 	/* =======================================================================
 	 * HELPERS
@@ -47,63 +47,91 @@
 
 	function loadAndRenderTree() {
 		var $treeContainer = $('#ss-createpage-tree');
-		var rootCategory = $treeContainer.data('root-category');
+		var treeNodesJson = $treeContainer.attr('data-tree-nodes');
 
-		if (!rootCategory) {
-			$treeContainer.html('<p class="ss-hierarchy-empty">' + msg('semanticschemas-hierarchy-no-category') + '</p>');
+		if (!treeNodesJson) {
+			$treeContainer.html('<p class="ss-hierarchy-empty">' + msg('semanticschemas-hierarchy-no-data') + '</p>');
 			return;
 		}
 
-		// Show loading state
-		$treeContainer.html('<p class="ss-hierarchy-loading">' + msg('semanticschemas-hierarchy-loading') + '</p>');
+		var nodes;
+		try {
+			nodes = JSON.parse(treeNodesJson);
+		} catch (e) {
+			$treeContainer.html('<p class="error">' + msg('semanticschemas-hierarchy-error') + '</p>');
+			return;
+		}
 
-		// Fetch hierarchy data
-		new mw.Api().get({
-			action: 'semanticschemas-hierarchy',
-			category: rootCategory,
-			format: 'json'
-		}).done(function (response) {
-			var data = response['semanticschemas-hierarchy'];
-			if (!data || !data.nodes) {
-				$treeContainer.html('<p class="error">' + msg('semanticschemas-hierarchy-no-data') + '</p>');
-				return;
-			}
-
-			treeData = data;
-			renderTree($treeContainer, data);
-		}).fail(function (code, result) {
-			var errorMsg = msg('semanticschemas-hierarchy-error');
-			if (result && result.error && result.error.info) {
-				errorMsg += ': ' + result.error.info;
-			}
-			$treeContainer.html('<p class="error">' + errorMsg + '</p>');
-		});
+		treeData = {nodes: nodes};
+		renderTree($treeContainer, nodes);
 	}
 
-	function renderTree($container, data) {
-		var root = data.rootCategory;
-		var nodes = data.nodes || {};
+	function renderTree($container, nodes) {
+		var nodeKeys = Object.keys(nodes);
 
-		if (!root || !nodes[root]) {
+		if (nodeKeys.length === 0) {
 			$container.html('<p class="ss-hierarchy-empty">' + msg('semanticschemas-hierarchy-no-data') + '</p>');
 			return;
 		}
 
-		// Recursive builder
+		// Build children index by inverting parent relationships
+		var childrenOf = {};
+		var i, key, node, parents, j;
+
+		for (i = 0; i < nodeKeys.length; i++) {
+			childrenOf[nodeKeys[i]] = [];
+		}
+
+		for (i = 0; i < nodeKeys.length; i++) {
+			key = nodeKeys[i];
+			node = nodes[key];
+			parents = Array.isArray(node.parents) ? node.parents : [];
+			for (j = 0; j < parents.length; j++) {
+				if (!childrenOf[parents[j]]) {
+					childrenOf[parents[j]] = [];
+				}
+				childrenOf[parents[j]].push(key);
+			}
+		}
+
+		// Sort children alphabetically
+		for (key in childrenOf) {
+			childrenOf[key].sort();
+		}
+
+		// Find root categories: no parents, or all parents missing from nodes map
+		var roots = [];
+		for (i = 0; i < nodeKeys.length; i++) {
+			key = nodeKeys[i];
+			parents = nodes[key].parents || [];
+			if (parents.length === 0 || parents.every(function (p) {
+				return !nodes[p];
+			})) {
+				roots.push(key);
+			}
+		}
+		roots.sort();
+
+		if (roots.length === 0) {
+			$container.html('<p class="ss-hierarchy-empty">' + msg('semanticschemas-hierarchy-no-data') + '</p>');
+			return;
+		}
+
+		// Recursive node builder
 		var buildNode = function (title, depth) {
-			var node = nodes[title];
-			if (!node) {
+			var nodeData = nodes[title];
+			if (!nodeData) {
 				return null;
 			}
 
-			// Note: node.parents contains CHILD categories (SemanticSchemas convention)
-			var children = Array.isArray(node.parents) ? node.parents : [];
+			var children = childrenOf[title] || [];
 			var $li = $('<li>');
 			var $content = $('<span>').addClass('ss-hierarchy-node-content');
+			var expanded;
 
 			// Toggle arrow if has children
 			if (children.length > 0) {
-				var expanded = (depth === 0); // First level expanded
+				expanded = (depth < 1);
 				$content.append(
 					$('<span>')
 						.addClass('ss-hierarchy-toggle')
@@ -150,8 +178,8 @@
 				if (!expanded) {
 					$ul.hide();
 				}
-				for (var i = 0; i < children.length; i++) {
-					var child = buildNode(children[i], depth + 1);
+				for (var c = 0; c < children.length; c++) {
+					var child = buildNode(children[c], depth + 1);
 					if (child) {
 						$ul.append(child);
 					}
@@ -163,9 +191,11 @@
 		};
 
 		var $rootTree = $('<ul>').addClass('ss-hierarchy-tree');
-		var $rootNode = buildNode(root, 0);
-		if ($rootNode) {
-			$rootTree.append($rootNode);
+		for (var r = 0; r < roots.length; r++) {
+			var $rootNode = buildNode(roots[r], 0);
+			if ($rootNode) {
+				$rootTree.append($rootNode);
+			}
 		}
 
 		$container.empty().append($rootTree);
@@ -334,7 +364,6 @@
 		$preview.empty();
 
 		var properties = data.properties || [];
-		var categoryList = data.categories || [];
 
 		if (properties.length === 0) {
 			$preview.html('<p class="ss-hierarchy-empty">' + msg('semanticschemas-hierarchy-no-properties') + '</p>');
@@ -350,7 +379,7 @@
 			if (prop.shared === 1) {
 				sharedProps.push(prop);
 			} else {
-				var sourceCat = prop.sourceCategory || '';
+				var sourceCat = (prop.sources && prop.sources.length > 0) ? prop.sources[0] : '';
 				if (!categoryProps[sourceCat]) {
 					categoryProps[sourceCat] = [];
 				}
@@ -378,7 +407,7 @@
 			var props = categoryProps[catName];
 
 			var $catSection = $('<div>').addClass('ss-createpage-category-section');
-			$catSection.append($('<h4>').text(stripPrefix(catName, 'Category')));
+			$catSection.append($('<h4>').text(catName));
 
 			var $catList = $('<ul>').addClass('ss-prop-list ss-prop-list-by-type');
 			for (var m = 0; m < props.length; m++) {
@@ -394,7 +423,7 @@
 		var $li = $('<li>').addClass(isRequired ? 'ss-prop-required' : 'ss-prop-optional');
 
 		// Property name (bold)
-		var propName = stripPrefix(prop.propertyTitle || '', 'Property');
+		var propName = prop.name || '';
 		$li.append($('<strong>').text(propName));
 
 		// Datatype badge

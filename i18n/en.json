@@ -148,6 +148,7 @@
 	"semanticschemas-install-config-not-found": "Configuration file not found.",
 	"semanticschemas-install-config-would-create": "Will create $1 {{PLURAL:$1|page|pages}}.",
 	"semanticschemas-install-config-would-update": "Will update $1 {{PLURAL:$1|page|pages}}.",
+	"createsemanticpage": "Create Semantic Page",
 	"semanticschemas-createpage-title": "Create Semantic Page",
 	"semanticschemas-createpage-tree-title": "Select Categories",
 	"semanticschemas-createpage-preview-title": "Property Preview",

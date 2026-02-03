@@ -96,7 +96,14 @@
 				"semanticschemas-createpage-submitting",
 				"semanticschemas-createpage-submit-error",
 				"semanticschemas-createpage-no-categories",
-				"semanticschemas-createpage-no-pagename"
+				"semanticschemas-createpage-no-pagename",
+				"semanticschemas-hierarchy-no-data",
+				"semanticschemas-hierarchy-no-properties",
+				"semanticschemas-hierarchy-loading",
+				"semanticschemas-hierarchy-error",
+				"semanticschemas-hierarchy-no-category",
+				"semanticschemas-hierarchy-required",
+				"semanticschemas-hierarchy-optional"
 			],
 			"localBasePath": "",
 			"remoteExtPath": "SemanticSchemas",

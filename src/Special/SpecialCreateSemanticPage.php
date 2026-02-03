@@ -79,23 +79,21 @@ class SpecialCreateSemanticPage extends SpecialPage {
 	 * @return string HTML
 	 */
 	private function renderLayout(): string {
-		// Lookup root category
 		$categoryStore = new WikiCategoryStore();
 		$allCategories = $categoryStore->getAllCategories();
-		$rootCategory = '';
 
-		// Find root: category with no parents
-		$roots = [];
+		// Build tree nodes for JS (all categories with their parents)
+		$treeNodes = [];
 		foreach ( $allCategories as $category ) {
-			if ( count( $category->getParents() ) === 0 ) {
-				$roots[] = $category->getName();
-			}
-		}
-
-		// If multiple roots, pick first alphabetically for determinism
-		if ( !empty( $roots ) ) {
-			sort( $roots );
-			$rootCategory = $roots[0];
+			$fullName = 'Category:' . $category->getName();
+			$parents = array_map(
+				static fn ( $p ) => 'Category:' . $p,
+				$category->getParents()
+			);
+			$treeNodes[$fullName] = [
+				'title' => $fullName,
+				'parents' => $parents,
+			];
 		}
 
 		// Build HTML structure
@@ -107,7 +105,7 @@ class SpecialCreateSemanticPage extends SpecialPage {
 		$html .= Html::element( 'h3', [], $this->msg( 'semanticschemas-createpage-tree-title' )->text() );
 		$html .= Html::element( 'div', [
 			'id' => 'ss-createpage-tree',
-			'data-root-category' => $rootCategory
+			'data-tree-nodes' => json_encode( $treeNodes, JSON_UNESCAPED_UNICODE )
 		] );
 		$html .= Html::closeElement( 'div' );
 
