@@ -120,7 +120,8 @@ class CompositeFormGenerator extends FormGenerator {
 	/**
 	 * Generate template sections for all categories.
 	 *
-	 * First category gets ALL properties (including shared).
+	 * First category gets ALL properties (shared + category-specific) in a single
+	 * {{{for template}}} block to avoid duplicate template calls.
 	 * Subsequent categories get only category-specific properties.
 	 *
 	 * @param ResolvedPropertySet $resolved
@@ -130,33 +131,62 @@ class CompositeFormGenerator extends FormGenerator {
 		$categories = $resolved->getCategoryNames();
 		$lines = [];
 
-		// Shared properties get their own box (mapped to first category's template)
-		$sharedRequired = $this->getSharedProperties(
-			$resolved->getRequiredProperties(), $resolved
-		);
-		$sharedOptional = $this->getSharedProperties(
-			$resolved->getOptionalProperties(), $resolved
-		);
-
-		if ( !empty( $sharedRequired ) || !empty( $sharedOptional ) ) {
-			$firstCategory = $categories[0];
-			$lines[] = '{{{for template|' . $this->s( $firstCategory )
-				. '|label=Shared Properties}}}';
-			$lines[] = '';
-			$lines = array_merge( $lines, $this->generatePropertySectionsForCategory(
-				$sharedRequired, $sharedOptional, $firstCategory
-			) );
-			$lines[] = '{{{end template}}}';
-			$lines[] = '';
-		}
-
-		// Per-category sections (category-specific properties only)
+		$isFirst = true;
 		foreach ( $categories as $categoryName ) {
-			$lines = array_merge(
-				$lines,
-				$this->generateCategorySection( $categoryName, $resolved )
-			);
+			if ( $isFirst ) {
+				$lines = array_merge(
+					$lines,
+					$this->generateFirstCategorySection( $categoryName, $resolved )
+				);
+				$isFirst = false;
+			} else {
+				$lines = array_merge(
+					$lines,
+					$this->generateCategorySection( $categoryName, $resolved )
+				);
+			}
 		}
+
+		return $lines;
+	}
+
+	/**
+	 * Generate the first category's template section with shared + category-specific properties.
+	 *
+	 * Shared properties are merged into this single section to avoid creating
+	 * duplicate {{{for template}}} blocks for the same template name.
+	 *
+	 * @param string $categoryName First category name
+	 * @param ResolvedPropertySet $resolved Full resolved property set
+	 * @return array Lines of wikitext
+	 */
+	private function generateFirstCategorySection(
+		string $categoryName,
+		ResolvedPropertySet $resolved
+	): array {
+		$required = $this->getFirstCategoryProperties(
+			$resolved->getRequiredProperties(), $categoryName, $resolved
+		);
+		$optional = $this->getFirstCategoryProperties(
+			$resolved->getOptionalProperties(), $categoryName, $resolved
+		);
+
+		if ( empty( $required ) && empty( $optional ) ) {
+			return [];
+		}
+
+		$lines = [];
+
+		$lines[] = '{{{for template|' . $this->s( $categoryName ) . '|label='
+			. $this->s( $categoryName ) . ' Properties}}}';
+		$lines[] = '';
+
+		$lines = array_merge( $lines, $this->generatePropertySectionsForCategory(
+			$required, $optional, $categoryName
+		) );
+
+		$lines[] = '{{{end template}}}';
+		$lines[] = '';
 
 		return $lines;
 	}
@@ -215,6 +245,37 @@ class CompositeFormGenerator extends FormGenerator {
 
 		foreach ( $allProperties as $prop ) {
 			if ( $resolved->isSharedProperty( $prop ) ) {
+				$filtered[] = $prop;
+			}
+		}
+
+		return $filtered;
+	}
+
+	/**
+	 * Get properties for the first category section (shared + category-specific).
+	 *
+	 * Includes all properties where this category is a source, plus any shared
+	 * properties (even if not sourced from this category), to ensure shared
+	 * properties appear exactly once in the form.
+	 *
+	 * @param array $allProperties All properties to filter
+	 * @param string $categoryName First category name
+	 * @param ResolvedPropertySet $resolved Resolved property set
+	 * @return array Filtered property names
+	 */
+	private function getFirstCategoryProperties(
+		array $allProperties,
+		string $categoryName,
+		ResolvedPropertySet $resolved
+	): array {
+		$filtered = [];
+
+		foreach ( $allProperties as $prop ) {
+			$sources = $resolved->getPropertySources( $prop );
+
+			// Include if this category is a source OR if property is shared
+			if ( in_array( $categoryName, $sources, true ) || $resolved->isSharedProperty( $prop ) ) {
 				$filtered[] = $prop;
 			}
 		}

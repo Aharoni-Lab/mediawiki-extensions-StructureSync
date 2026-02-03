@@ -291,7 +291,7 @@ class CompositeFormGeneratorTest extends TestCase {
 	 * EMPTY SECTION HANDLING
 	 * ========================================================================= */
 
-	public function testSharedPropertiesGetOwnSection(): void {
+	public function testSharedPropertiesMergedIntoFirstCategory(): void {
 		// All properties shared — no category-specific properties
 		$resolved = new ResolvedPropertySet(
 			[ 'Has name' ], // required (shared)
@@ -308,16 +308,18 @@ class CompositeFormGeneratorTest extends TestCase {
 		$generator = $this->createGenerator();
 		$result = $generator->generateCompositeForm( $resolved );
 
-		// Shared properties get their own labeled section
-		$this->assertStringContainsString( '{{{for template|Person|label=Shared Properties}}}', $result );
+		// Shared properties merged into first category's section
+		$this->assertStringContainsString( '{{{for template|Person|label=Person Properties}}}', $result );
 
-		// Empty category-specific sections are skipped
-		$this->assertStringNotContainsString( 'label=Person Properties', $result );
+		// No separate shared section
+		$this->assertStringNotContainsString( 'label=Shared Properties', $result );
+
+		// Employee has no non-shared properties, so section is skipped
 		$this->assertStringNotContainsString( 'label=Employee Properties', $result );
 
-		// Only 1 template block (the shared one)
+		// Only 1 template block (first category with shared properties merged)
 		$endCount = substr_count( $result, '{{{end template}}}' );
-		$this->assertSame( 1, $endCount, 'Only shared section should exist when no category-specific properties' );
+		$this->assertSame( 1, $endCount, 'Only first category section should exist when all properties are shared' );
 	}
 
 	/* =========================================================================
