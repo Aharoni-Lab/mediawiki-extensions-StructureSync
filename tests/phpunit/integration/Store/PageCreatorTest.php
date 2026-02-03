@@ -30,7 +30,7 @@ class PageCreatorTest extends MediaWikiIntegrationTestCase {
 		$result = $this->pageCreator->createOrUpdatePage( $title, 'Test content', 'Test summary' );
 
 		$this->assertTrue( $result );
-		$this->assertTrue( $this->pageCreator->pageExists( $title ) );
+		$this->assertTrue( $title->exists() );
 	}
 
 	public function testCreateOrUpdatePageWithContentVerification(): void {
